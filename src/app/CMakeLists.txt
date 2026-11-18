@@ -26,6 +26,8 @@ add_library(echo_app STATIC
     scrobbler_log.c
     settings_screens.c
     settings_store.c
+    splash.c
+    splash_logo.c
     spoken_store.c
     update_record.c
     screens/bluetooth_screen.c

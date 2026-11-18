@@ -201,6 +201,11 @@ echo_add_unit_test(NAME test_home_art
     LIBRARIES echo_app echo_library_fixtures
     PRIVATE_INCLUDES ${PROJECT_SOURCE_DIR}/src/app
 )
+echo_add_unit_test(NAME test_splash
+    SOURCES app/test_splash.c app/fake_hal.c
+    LIBRARIES echo_app echo_library_fixtures
+    PRIVATE_INCLUDES ${PROJECT_SOURCE_DIR}/src/app
+)
 echo_add_unit_test(NAME test_stores
     SOURCES app/test_stores.c app/fake_hal.c
     LIBRARIES echo_app echo_library_fixtures
