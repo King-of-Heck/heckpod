@@ -589,6 +589,13 @@ if(EXISTS ${ECHO_TOOLS_PYTHON})
             --tracks-only-output ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/small_library_tracks.db
             --check
     )
+    add_test(NAME splash_logo_up_to_date
+        COMMAND ${ECHO_TOOLS_PYTHON} ${PROJECT_SOURCE_DIR}/tools/splash_logo.py
+            --source ${PROJECT_SOURCE_DIR}/assets/splash/king-of-heck.jpg
+            --output ${PROJECT_SOURCE_DIR}/src/app
+            --style ${PROJECT_SOURCE_DIR}/.clang-format
+            --check
+    )
 else()
     message(STATUS "tools venv not found: run python3 -m venv .venv && .venv/bin/pip install -r tools/requirements.txt")
 endif()
