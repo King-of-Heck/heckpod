@@ -34,13 +34,13 @@ class SplashLogoTest(unittest.TestCase):
         scaled = splash_logo.scaled(Image.new("L", (30, 60), 255))
         self.assertEqual((36, 72), scaled.size)
 
-    def test_levels_quantise_to_sixteen_steps(self):
+    def test_levels_quantise_to_four_steps(self):
         self.assertEqual(0, splash_logo.quantised(0))
-        self.assertEqual(15, splash_logo.quantised(255))
-        self.assertEqual(8, splash_logo.quantised(128))
+        self.assertEqual(3, splash_logo.quantised(255))
+        self.assertEqual(2, splash_logo.quantised(128))
 
-    def test_rows_pack_two_pixels_per_byte_high_nibble_first(self):
-        self.assertEqual(bytes([0xF0, 0x70, 0x12, 0x30]), splash_logo.pack_rows([[15, 0, 7], [1, 2, 3]]))
+    def test_rows_pack_four_pixels_per_byte_leftmost_in_the_high_bits(self):
+        self.assertEqual(bytes([0xC8, 0x6D, 0x80]), splash_logo.pack_rows([[3, 0, 2], [1, 2, 3, 1, 2]]))
 
 
 if __name__ == "__main__":

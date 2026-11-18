@@ -7,8 +7,10 @@
 
 enum {
     SPLASH_GAP = 12,
-    NIBBLE_SHIFT = 4,
-    NIBBLE_MASK = 0x0F
+    PIXELS_PER_BYTE = 4,
+    BITS_PER_PIXEL = 2,
+    PIXEL_MASK = 0x03,
+    ALPHA_STEP = 5
 };
 
 uint8_t splash_logo_alpha(int x, int y)
@@ -16,8 +18,9 @@ uint8_t splash_logo_alpha(int x, int y)
     if (x < 0 || y < 0 || x >= SPLASH_LOGO_WIDTH || y >= SPLASH_LOGO_HEIGHT) {
         return 0;
     }
-    uint8_t packed = SPLASH_LOGO_ALPHA[y * SPLASH_LOGO_STRIDE + x / 2];
-    return x % 2 == 0 ? (uint8_t)(packed >> NIBBLE_SHIFT) : (uint8_t)(packed & NIBBLE_MASK);
+    uint8_t packed = SPLASH_LOGO_ALPHA[y * SPLASH_LOGO_STRIDE + x / PIXELS_PER_BYTE];
+    int shift = (PIXELS_PER_BYTE - 1 - x % PIXELS_PER_BYTE) * BITS_PER_PIXEL;
+    return (uint8_t)(((packed >> shift) & PIXEL_MASK) * ALPHA_STEP);
 }
 
 SplashLayout splash_layout(Rect screen, const Font *font, const char *word)

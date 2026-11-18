@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageFilter
 
 HEIGHT = 72
-OPAQUE = 15
+OPAQUE = 3
 INK_LOW = 40
 INK_HIGH = 160
 PAPER_FILTER = 15
@@ -50,9 +50,10 @@ def alpha_rows(image):
 def pack_rows(rows):
     packed = bytearray()
     for row in rows:
-        padded = list(row) + [0] * (len(row) % 2)
-        for index in range(0, len(padded), 2):
-            packed.append(padded[index] << 4 | padded[index + 1])
+        padded = list(row) + [0] * (-len(row) % 4)
+        for index in range(0, len(padded), 4):
+            first, second, third, fourth = padded[index:index + 4]
+            packed.append(first << 6 | second << 4 | third << 2 | fourth)
     return bytes(packed)
 
 
@@ -65,7 +66,7 @@ def formatted(text, style):
 def render(source, style):
     image = scaled(cropped(ink_levels(Image.open(source))))
     packed = pack_rows(alpha_rows(image))
-    stride = (image.width + 1) // 2
+    stride = (image.width + 3) // 4
     header = ["#pragma once", "", "#include <stdint.h>", "", "enum {",
               f"    SPLASH_LOGO_WIDTH = {image.width},", f"    SPLASH_LOGO_HEIGHT = {image.height},",
               f"    SPLASH_LOGO_STRIDE = {stride}", "};", "",
