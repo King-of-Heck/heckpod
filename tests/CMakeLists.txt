@@ -496,6 +496,9 @@ else()
 endif()
 
 set(ECHO_TOOLS_PYTHON ${PROJECT_SOURCE_DIR}/.venv/bin/python)
+if(NOT EXISTS ${ECHO_TOOLS_PYTHON})
+    set(ECHO_TOOLS_PYTHON ${PROJECT_SOURCE_DIR}/.venv/Scripts/python.exe)
+endif()
 if(EXISTS ${ECHO_TOOLS_PYTHON})
     add_test(NAME tools_unit_tests
         COMMAND ${ECHO_TOOLS_PYTHON} -m unittest discover -s ${PROJECT_SOURCE_DIR}/tools/tests

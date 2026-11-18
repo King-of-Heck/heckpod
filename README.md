@@ -1,5 +1,7 @@
 # EchoPod
 
+> **HeckPod** is a personal build of [EchoPod](https://github.com/BasilSkyWalk/echopod) by BasilSkyWalk, with a custom start-up screen. All credit for EchoPod goes to its author. GPL-3.0, like EchoPod.
+
 Replacement firmware for the Snowsky (FiiO) Echo Mini 8 GB music player. It has an iPod-style Cover Flow browser, a music library built on the player, album favorites, M3U playlists and an Up Next queue. It isn't made or supported by FiiO.
 
 - **Installing and using it:** `docs/user-guide.md`.
