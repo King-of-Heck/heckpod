@@ -206,6 +206,9 @@ echo_add_unit_test(NAME test_splash
     LIBRARIES echo_app echo_library_fixtures
     PRIVATE_INCLUDES ${PROJECT_SOURCE_DIR}/src/app
 )
+add_executable(splash_preview app/splash_preview.c app/fake_hal.c)
+target_link_libraries(splash_preview PRIVATE echo_app echo_library_fixtures echo_options)
+target_include_directories(splash_preview PRIVATE ${PROJECT_SOURCE_DIR}/src/app)
 echo_add_unit_test(NAME test_stores
     SOURCES app/test_stores.c app/fake_hal.c
     LIBRARIES echo_app echo_library_fixtures
