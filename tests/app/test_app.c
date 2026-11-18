@@ -227,7 +227,7 @@ static void the_home_menu_is_the_root(void)
 {
     start_app();
     step();
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK_EQUAL(1, app_screen_depth());
 }
 
@@ -244,7 +244,7 @@ static void back_returns_to_the_previous_screen(void)
     start_app();
     tap(KEY_PLAY);
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void a_long_back_returns_home_from_deep_screens(void)
@@ -499,7 +499,7 @@ static void home_art_keeps_the_playing_album(void)
         wait_ms(HOME_ART_CYCLE_MS);
     }
     step();
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK_EQUAL(RED_COVER, home_art_probe());
 }
 
@@ -508,7 +508,7 @@ static void the_home_menu_shows_now_playing_last_once_a_track_is_loaded(void)
     start_app_with_library();
     play_first_album_track();
     hold_back();
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     move_down(HOME_NOW_PLAYING_INDEX);
     tap(KEY_PLAY);
     CHECK(title_is("Now Playing"));
@@ -919,7 +919,7 @@ static void going_back_slides_the_screen_out_to_the_right(void)
     tap(KEY_PLAY);
     wait_ms(SLIDE_DURATION_MS);
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK_EQUAL(DEFAULT_THEME.colors.scrollbar_thumb, scrollbar_probe());
     wait_ms(SLIDE_DURATION_MS);
     CHECK(scrollbar_probe() != DEFAULT_THEME.colors.scrollbar_thumb);
@@ -1131,7 +1131,7 @@ static void the_splash_ignores_keys_until_it_ends(void)
     app_show_splash();
     step();
     tap(KEY_PLAY);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     wait_ms(SPLASH_MS);
     tap(KEY_PLAY);
     CHECK(title_is("Music"));
@@ -1776,7 +1776,7 @@ static void the_start_screen_setting_opens_albums(void)
     tap(KEY_BACK);
     CHECK(title_is("Music"));
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void the_start_screen_setting_opens_now_playing(void)
@@ -2032,7 +2032,7 @@ static void a_notice_is_drawn_at_once_over_the_current_screen(void)
     app_show_notice("USB", "Connected to a computer");
     CHECK_EQUAL(presents + 1, fake_hal_present_count());
     CHECK(fake_hal_pixels_written() > pixels);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void a_notice_turns_the_display_on(void)
@@ -2307,7 +2307,7 @@ static void menu_opens_now_playing_from_anywhere_while_playing(void)
     start_app_with_library();
     play_first_album_track();
     hold_back();
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     tap(KEY_MENU);
     CHECK(title_is("Now Playing"));
     int depth = app_screen_depth();
@@ -2320,7 +2320,7 @@ static void menu_does_nothing_while_nothing_plays(void)
 {
     start_app_with_library();
     tap(KEY_MENU);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static uint8_t history_settings[SETTINGS_FILE_SIZE];
@@ -2416,7 +2416,7 @@ static void back_leaves_a_setting_then_its_group_then_settings(void)
     tap(KEY_BACK);
     CHECK(title_is("Settings"));
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void settings_and_its_groups_keep_their_selected_rows(void)
@@ -2426,7 +2426,7 @@ static void settings_and_its_groups_keep_their_selected_rows(void)
     tap(KEY_BACK);
     tap(KEY_BACK);
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     tap(KEY_PLAY);
     CHECK(title_is("Settings"));
     tap(KEY_PLAY);
@@ -3104,7 +3104,7 @@ static void the_header_and_status_bar_take_the_face_colours_until_home(void)
     CHECK(!header_shows(DEFAULT_THEME.colors.success));
     hold_back();
     wait_ms(SLIDE_DURATION_MS);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK_EQUAL(DEFAULT_THEME.colors.header_top, fake_hal_pixel(2, 0));
     CHECK(header_shows(DEFAULT_THEME.colors.success));
     CHECK(!header_shows(face->success));
@@ -3123,7 +3123,7 @@ static void leaving_a_face_flips_the_header_and_status_bar_at_the_midpoint(void)
     wait_ms(KEY_HOLD_MS);
     const ThemeColors *face = face_code_in_use()->chrome[NP_FACE_CASSETTE];
     hold_back();
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK(shows_chrome_of(face));
     wait_ms(SLIDE_DURATION_MS * 3 / 4);
     CHECK(shows_chrome_of(&DEFAULT_THEME.colors));
@@ -3352,17 +3352,17 @@ static void start_with_new_firmware(HalTime chip)
 static void a_new_firmware_asks_once_for_the_clock_after_the_start_up_screen(void)
 {
     start_with_new_firmware(chip_on(2026, 1, 14));
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     wait_ms(SPLASH_MS);
     CHECK(title_is("Set the date and time?"));
     move_down(1);
     tap(KEY_PLAY);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     restart_app();
     app_show_splash();
     wait_ms(SPLASH_MS);
     wait_ms(SPLASH_MS);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void set_now_opens_the_date_and_time_at_the_build_date(void)
@@ -3376,7 +3376,7 @@ static void set_now_opens_the_date_and_time_at_the_build_date(void)
     move_up(1);
     tap(KEY_BACK);
     tap(KEY_BACK);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
     CHECK_EQUAL(1, fake_hal_time_write_count());
     CHECK_EQUAL(2026, fake_hal_time().year);
     CHECK_EQUAL(11, fake_hal_time().month);
@@ -3388,7 +3388,7 @@ static void a_new_firmware_does_not_ask_when_the_clock_is_set(void)
     start_with_new_firmware(chip_on(2026, 11, 5));
     wait_ms(SPLASH_MS);
     wait_ms(SPLASH_MS);
-    CHECK(title_is("EchoPod"));
+    CHECK(title_is("HeckPod"));
 }
 
 static void the_header_shows_the_time_only_while_the_clock_setting_is_on(void)

@@ -8,6 +8,7 @@
 #include "hal/power.h"
 #include "hal/storage.h"
 #include "hal/system.h"
+#include "product.h"
 
 typedef enum MusicSource {
     MUSIC_COVER_FLOW,
@@ -231,7 +232,7 @@ static void build_home(AppScreens *screens, AppScreensContext context)
     screens->home_items[5].shown_context = context.player;
     home_art_init(&screens->home_art, context.covers, context.store, context.player, theme);
     screens->home_art.notice = hal_storage_card_ready() ? NULL : i18n_text(STR_MENU_NO_CARD);
-    MenuConfig home = {.title = "EchoPod",
+    MenuConfig home = {.title = PRODUCT_NAME,
                        .items = screens->home_items,
                        .item_count = HOME_ITEM_COUNT,
                        .theme = theme,

@@ -34,10 +34,12 @@
 #include "listen_history.h"
 #include "music_check.h"
 #include "player.h"
+#include "product.h"
 #include "screens/charge_screen.h"
 #include "scrobbler_log.h"
 #include "settings/rocker.h"
 #include "settings_store.h"
+#include "splash.h"
 #include "ui/choice_screen.h"
 #include "ui/fade.h"
 #include "ui/header.h"
@@ -180,7 +182,6 @@ static const FadeTiming SPLASH_TIMING = {.fade_ms = 300, .hold_ms = 200, .rising
 static const uint32_t SCREEN_ON_CLOCK_MHZ = 200;
 static const uint32_t IDLE_CLOCK_MHZ = 96;
 static const FadeTiming GOODBYE_TIMING = {.fade_ms = 600, .hold_ms = 400, .rising = false};
-static const char SPLASH_TEXT[] = "EchoPod";
 static const char GOODBYE_TEXT[] = "Goodbye";
 static Color strip_pixels[HAL_DISPLAY_WIDTH * STRIP_HEIGHT];
 static uint32_t row_hashes[HAL_DISPLAY_LONG_SIDE];
@@ -624,7 +625,7 @@ static bool draw_running_fade(Canvas *canvas)
         return true;
     }
     if (!fade_finished(&app.splash, app.now_ms)) {
-        draw_fade(canvas, &app.splash, SPLASH_TEXT);
+        splash_draw(canvas, whole_screen(), current_theme(), fade_alpha(&app.splash, app.now_ms));
         return true;
     }
     return false;
@@ -903,7 +904,7 @@ static void report_card_files(CardFilesReport files, uint32_t now_ms)
 
 static void show_card_setup(void)
 {
-    app_show_notice("EchoPod", i18n_text(STR_BOOT_CARD_SETUP));
+    app_show_notice(PRODUCT_NAME, i18n_text(STR_BOOT_CARD_SETUP));
 }
 
 static void apply_language(Language language)
