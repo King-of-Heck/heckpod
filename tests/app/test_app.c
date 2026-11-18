@@ -88,8 +88,8 @@ enum {
     DIAGNOSTICS_ACCEL_INDEX = 14,
     FIFTEEN_MINUTES_MS = 15 * 60 * 1000,
     GOODBYE_MS = 1000,
-    SPLASH_FADE_MS = 300,
-    SPLASH_MS = 500,
+    SPLASH_FADE_MS = 500,
+    SPLASH_MS = 1500,
     HALF_BATTERY = 50
 };
 
@@ -1132,7 +1132,10 @@ static void the_splash_ignores_keys_until_it_ends(void)
     step();
     tap(KEY_PLAY);
     CHECK(title_is("HeckPod"));
-    wait_ms(SPLASH_MS);
+    wait_ms(SPLASH_MS - SPLASH_FADE_MS);
+    tap(KEY_PLAY);
+    CHECK(title_is("HeckPod"));
+    wait_ms(SPLASH_FADE_MS);
     tap(KEY_PLAY);
     CHECK(title_is("Music"));
 }
