@@ -2,6 +2,7 @@
 
 #include "check.h"
 #include "core/hash.h"
+#include "core/i18n.h"
 #include "default_theme.h"
 #include "fake_hal.h"
 #include "gfx/text.h"
@@ -23,8 +24,9 @@ static const char *const TOP[SETTINGS_TOP_COUNT] = {
 static const char *const SOUND[] = {"Gain", "Output", "Filter", "Balance", "Bluetooth level",
                                      "Playback speed"};
 static const char *const DISPLAY[] = {
-    "Theme",       "Accent color", "Highlight",       "Brightness",          "Screen timeout",
-    "Orientation", "Animations",   "Battery percent", "Portrait status bar", "Clock"};
+    "Theme",       "Accent color", "Highlight",       "Now Playing",         "Brightness",
+    "Screen timeout", "Orientation", "Animations", "Battery percent", "Portrait status bar",
+    "Clock"};
 static const char *const LIBRARY[] = {"Music folders",       "Rescan library",   "Start screen",
                                       "Cover Flow",          "Cover Flow order", "Artist albums",
                                       "Folders & playlists", "Lyrics",           "Listen history"};
@@ -154,9 +156,8 @@ static void playback_speed_is_in_sound_settings(void)
     CHECK_EQUAL(192, player.speed_q8);
 }
 
-static const char *const THEME_NAMES[THEME_COUNT] = {
-    "Dark",  "Light",         "Fjord",    "Dusk",      "Neon",      "Phosphor", "Paper",
-    "Olive", "High contrast", "Cassette", "VU meters", "Turntable", "LCD deck"};
+static const char *const THEME_NAMES[COLOR_THEME_COUNT] = {
+    "Dark", "Light", "Fjord", "Dusk", "Neon", "Phosphor", "Paper", "Olive", "High contrast"};
 
 static void start_with_theme(SettingsStore *store, int theme)
 {
@@ -182,13 +183,13 @@ static bool row_is_shown(int row)
     return item->shown == NULL || item->shown(item->shown_context);
 }
 
-static void the_theme_choice_lists_every_theme_in_stored_order(void)
+static void the_theme_choice_lists_the_colour_themes_in_stored_order(void)
 {
     SettingsStore store;
     start_with_theme(&store, THEME_DARK);
     screens.rows[0].select(screens.rows[0].context);
-    CHECK_EQUAL(THEME_COUNT, screens.choice.config.option_count);
-    for (int theme = 0; theme < THEME_COUNT; theme++) {
+    CHECK_EQUAL(COLOR_THEME_COUNT, screens.choice.config.option_count);
+    for (int theme = 0; theme < COLOR_THEME_COUNT; theme++) {
         CHECK_EQUAL(0, strcmp(THEME_NAMES[theme], screens.choice.config.options[theme]));
     }
 }
@@ -216,9 +217,9 @@ static void the_theme_choice_lists_theme_files_after_the_built_in_themes(void)
     fake_hal_add_directory_entry("/Themes", "A name far too long to show.echotheme", false, false);
     fake_hal_add_directory_entry("/Themes", ".echotheme", false, false);
     open_theme_choice();
-    CHECK_EQUAL(THEME_COUNT + 2, screens.choice.config.option_count);
-    CHECK_EQUAL(0, strcmp("Ember", screens.choice.config.options[THEME_COUNT]));
-    CHECK_EQUAL(0, strcmp("Night Owl", screens.choice.config.options[THEME_COUNT + 1]));
+    CHECK_EQUAL(COLOR_THEME_COUNT + 2, screens.choice.config.option_count);
+    CHECK_EQUAL(0, strcmp("Ember", screens.choice.config.options[COLOR_THEME_COUNT]));
+    CHECK_EQUAL(0, strcmp("Night Owl", screens.choice.config.options[COLOR_THEME_COUNT + 1]));
     CHECK_EQUAL(THEME_DARK, screens.choice.config.current(screens.choice.config.context));
 }
 
@@ -227,7 +228,7 @@ static void a_card_without_a_themes_folder_lists_only_the_built_in_themes(void)
     SettingsStore store;
     start_with_theme(&store, THEME_FJORD);
     open_theme_choice();
-    CHECK_EQUAL(THEME_COUNT, screens.choice.config.option_count);
+    CHECK_EQUAL(COLOR_THEME_COUNT, screens.choice.config.option_count);
     CHECK_EQUAL(THEME_FJORD, screens.choice.config.current(screens.choice.config.context));
 }
 
@@ -239,12 +240,12 @@ static void a_chosen_theme_file_is_worn_named_and_remembered(void)
     theme_fixture_on_card("ember.echotheme", "Ember.echotheme", &size);
     open_theme_choice();
     uint8_t revision = theme_store_revision();
-    choose_theme_option(THEME_COUNT);
+    choose_theme_option(COLOR_THEME_COUNT);
     const ThemePackage *package = theme_store_package();
     CHECK(package != NULL);
     CHECK(theme_store_revision() != revision);
     CHECK_EQUAL(COLOR_RGB(0x18, 0x12, 0x10), package->colors.background);
-    CHECK_EQUAL(THEME_COUNT, screens.choice.config.current(screens.choice.config.context));
+    CHECK_EQUAL(COLOR_THEME_COUNT, screens.choice.config.current(screens.choice.config.context));
     CHECK_EQUAL(0, strcmp("Ember", screens.rows[0].value(screens.rows[0].context)));
     CHECK_EQUAL(THEME_LIGHT, store.settings.options[OPTION_THEME]);
     const uint8_t *record = fake_hal_file_bytes(THEME_STORE_PATH, &size);
@@ -262,7 +263,7 @@ static void a_theme_file_without_accents_hides_the_accent_row(void)
     CHECK(row_is_shown(2));
     theme_fixture_on_card("ember.echotheme", "Ember.echotheme", &size);
     open_theme_choice();
-    choose_theme_option(THEME_COUNT);
+    choose_theme_option(COLOR_THEME_COUNT);
     CHECK(!row_is_shown(1));
     CHECK(row_is_shown(2));
 }
@@ -274,7 +275,7 @@ static void choosing_a_built_in_theme_takes_the_theme_file_off(void)
     start_with_theme(&store, THEME_DARK);
     theme_fixture_on_card("ember.echotheme", "Ember.echotheme", &size);
     open_theme_choice();
-    choose_theme_option(THEME_COUNT);
+    choose_theme_option(COLOR_THEME_COUNT);
     choose_theme_option(THEME_NEON);
     CHECK(!theme_store_card());
     CHECK_EQUAL(0, strcmp("Neon", theme_store_package()->name));
@@ -292,7 +293,7 @@ static void a_damaged_theme_file_is_not_worn(void)
     uint8_t *bytes = theme_fixture_on_card("ember.echotheme", "Ember.echotheme", &size);
     bytes[60] ^= 0x40;
     open_theme_choice();
-    choose_theme_option(THEME_COUNT);
+    choose_theme_option(COLOR_THEME_COUNT);
     CHECK(!theme_store_card());
     CHECK(row_is_shown(1));
     CHECK_EQUAL(THEME_DARK, screens.choice.config.current(screens.choice.config.context));
@@ -301,7 +302,7 @@ static void a_damaged_theme_file_is_not_worn(void)
 static void the_accent_row_shows_only_on_dark_and_light(void)
 {
     SettingsStore store;
-    for (int theme = 0; theme < THEME_COUNT; theme++) {
+    for (int theme = 0; theme < COLOR_THEME_COUNT; theme++) {
         start_with_theme(&store, theme);
         CHECK_EQUAL(theme == THEME_DARK || theme == THEME_LIGHT, row_is_shown(1));
     }
@@ -310,10 +311,10 @@ static void the_accent_row_shows_only_on_dark_and_light(void)
 static void the_highlight_row_shows_only_on_gradient_themes(void)
 {
     SettingsStore store;
-    for (int theme = 0; theme < THEME_COUNT; theme++) {
+    for (int theme = 0; theme < COLOR_THEME_COUNT; theme++) {
         start_with_theme(&store, theme);
         bool gradient = theme == THEME_DARK || theme == THEME_LIGHT || theme == THEME_FJORD ||
-                        theme == THEME_DUSK || theme == THEME_PAPER || theme >= THEME_CASSETTE;
+                        theme == THEME_DUSK || theme == THEME_PAPER;
         CHECK_EQUAL(gradient, row_is_shown(2));
     }
 }
@@ -351,7 +352,7 @@ static void the_accent_choice_lists_the_accents_the_theme_offers(void)
     uint8_t *bytes = theme_fixture_on_card("light.echotheme", "Mine.echotheme", &size);
     rename_accent(bytes, size, 2, "Ruby");
     open_theme_choice();
-    choose_theme_option(THEME_COUNT);
+    choose_theme_option(COLOR_THEME_COUNT);
     CHECK(theme_store_card());
     open_accent_choice();
     CHECK_EQUAL(0, strcmp("Red", screens.choice.config.options[1]));
@@ -370,15 +371,78 @@ static void hidden_rows_leave_the_other_display_rows_in_place(void)
 {
     SettingsStore store;
     start_with_theme(&store, THEME_DARK);
-    CHECK_EQUAL(10, shown_display_rows());
+    CHECK_EQUAL(11, shown_display_rows());
     start_with_theme(&store, THEME_NEON);
-    CHECK_EQUAL(8, shown_display_rows());
-    CHECK(shown_display_row_is(0, "Theme"));
-    CHECK(shown_display_row_is(1, "Brightness"));
-    start_with_theme(&store, THEME_FJORD);
     CHECK_EQUAL(9, shown_display_rows());
-    CHECK(shown_display_row_is(1, "Highlight"));
+    CHECK(shown_display_row_is(0, "Theme"));
+    CHECK(shown_display_row_is(1, "Now Playing"));
     CHECK(shown_display_row_is(2, "Brightness"));
+    start_with_theme(&store, THEME_FJORD);
+    CHECK_EQUAL(10, shown_display_rows());
+    CHECK(shown_display_row_is(1, "Highlight"));
+    CHECK(shown_display_row_is(2, "Now Playing"));
+    CHECK(shown_display_row_is(3, "Brightness"));
+}
+
+enum {
+    DISPLAY_FACE_ROW = 3
+};
+
+static const char *const FACE_NAMES[NP_FACE_COUNT] = {"Standard", "Cassette", "VU meters",
+                                                      "Turntable", "LCD deck"};
+
+static void open_face_choice(void)
+{
+    screens.rows[DISPLAY_FACE_ROW].select(screens.rows[DISPLAY_FACE_ROW].context);
+}
+
+static const char *face_row_value(void)
+{
+    return screens.rows[DISPLAY_FACE_ROW].value(screens.rows[DISPLAY_FACE_ROW].context);
+}
+
+static void the_now_playing_row_lists_the_five_faces(void)
+{
+    SettingsStore store;
+    start_with_theme(&store, THEME_DARK);
+    CHECK_EQUAL(0, strcmp("Now Playing", screens.rows[DISPLAY_FACE_ROW].label));
+    CHECK(row_is_shown(DISPLAY_FACE_ROW));
+    CHECK_EQUAL(0, strcmp("Standard", face_row_value()));
+    open_face_choice();
+    CHECK_EQUAL(0, strcmp("Now Playing", screens.choice.config.title));
+    CHECK_EQUAL(NP_FACE_COUNT, screens.choice.config.option_count);
+    for (int face = 0; face < NP_FACE_COUNT; face++) {
+        CHECK_EQUAL(0, strcmp(FACE_NAMES[face], i18n_text(screens.choice.config.option_ids[face])));
+    }
+    CHECK_EQUAL(NP_FACE_STANDARD, screens.choice.config.current(screens.choice.config.context));
+}
+
+static void the_theme_choice_leaves_out_the_faces(void)
+{
+    SettingsStore store;
+    start_with_theme(&store, THEME_DARK);
+    open_theme_choice();
+    for (int option = 0; option < screens.choice.config.option_count; option++) {
+        for (int face = NP_FACE_CASSETTE; face < NP_FACE_COUNT; face++) {
+            CHECK(strcmp(FACE_NAMES[face], screens.choice.config.options[option]) != 0);
+        }
+    }
+}
+
+static void choosing_a_face_keeps_the_theme_and_choosing_a_theme_keeps_the_face(void)
+{
+    SettingsStore store;
+    start_with_theme(&store, THEME_FJORD);
+    open_face_choice();
+    screens.choice.config.choose(screens.choice.config.context, NP_FACE_VU_METERS);
+    CHECK_EQUAL(NP_FACE_VU_METERS, store.settings.options[OPTION_NOW_PLAYING_FACE]);
+    CHECK_EQUAL(THEME_FJORD, store.settings.options[OPTION_THEME]);
+    CHECK_EQUAL(0, strcmp("VU meters", face_row_value()));
+    open_theme_choice();
+    choose_theme_option(THEME_NEON);
+    CHECK_EQUAL(THEME_NEON, store.settings.options[OPTION_THEME]);
+    CHECK_EQUAL(NP_FACE_VU_METERS, store.settings.options[OPTION_NOW_PLAYING_FACE]);
+    CHECK_EQUAL(0, strcmp("VU meters", face_row_value()));
 }
 
 int main(void)
@@ -390,7 +454,7 @@ int main(void)
         TEST_CASE(playback_speed_is_in_sound_settings),
         TEST_CASE(a_group_remembers_its_selected_row),
         TEST_CASE(starting_again_forgets_the_selected_rows),
-        TEST_CASE(the_theme_choice_lists_every_theme_in_stored_order),
+        TEST_CASE(the_theme_choice_lists_the_colour_themes_in_stored_order),
         TEST_CASE(the_theme_choice_lists_theme_files_after_the_built_in_themes),
         TEST_CASE(a_card_without_a_themes_folder_lists_only_the_built_in_themes),
         TEST_CASE(a_chosen_theme_file_is_worn_named_and_remembered),
@@ -401,6 +465,9 @@ int main(void)
         TEST_CASE(the_highlight_row_shows_only_on_gradient_themes),
         TEST_CASE(the_accent_choice_lists_the_accents_the_theme_offers),
         TEST_CASE(hidden_rows_leave_the_other_display_rows_in_place),
+        TEST_CASE(the_now_playing_row_lists_the_five_faces),
+        TEST_CASE(the_theme_choice_leaves_out_the_faces),
+        TEST_CASE(choosing_a_face_keeps_the_theme_and_choosing_a_theme_keeps_the_face),
     };
     return test_run_all(cases, TEST_CASE_COUNT(cases));
 }

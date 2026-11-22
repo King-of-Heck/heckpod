@@ -59,11 +59,12 @@ enum {
     DISPLAY_THEME_ROW = 0,
     DISPLAY_ACCENT_ROW = 1,
     DISPLAY_HIGHLIGHT_ROW = 2,
-    DISPLAY_BRIGHTNESS_ROW = 3,
-    DISPLAY_TIMEOUT_ROW = 4,
-    DISPLAY_ORIENTATION_ROW = 5,
-    DISPLAY_STATUS_BAR_ROW = 8,
-    DISPLAY_CLOCK_ROW = 9,
+    DISPLAY_NOW_PLAYING_ROW = 3,
+    DISPLAY_BRIGHTNESS_ROW = 4,
+    DISPLAY_TIMEOUT_ROW = 5,
+    DISPLAY_ORIENTATION_ROW = 6,
+    DISPLAY_STATUS_BAR_ROW = 9,
+    DISPLAY_CLOCK_ROW = 10,
     LIBRARY_FOLDERS_ROW = 0,
     LIBRARY_RESCAN_ROW = 1,
     LIBRARY_START_ROW = 2,
@@ -3283,25 +3284,27 @@ static void a_face_over_fjord_shows_on_now_playing_and_fjord_on_the_menus(void)
     CHECK(fake_hal_pixel(2, 0) != face->header_top);
 }
 
-static void choose_theme(int theme)
+static void choose_face(int face)
 {
-    open_setting(SETTINGS_DISPLAY, DISPLAY_THEME_ROW);
-    move_down(theme);
+    open_setting(SETTINGS_DISPLAY, DISPLAY_NOW_PLAYING_ROW);
+    CHECK(title_is("Now Playing"));
+    move_down(face);
     tap(KEY_PLAY);
     CHECK(title_is("Display"));
 }
 
-static void a_face_theme_chosen_in_settings_applies_without_a_restart(void)
+static void a_face_chosen_in_settings_applies_without_a_restart(void)
 {
     start_app_with_library();
     play_first_album_track();
     wait_ms(SLIDE_DURATION_MS);
     CHECK_EQUAL(DEFAULT_THEME.colors->header_top, fake_hal_pixel(2, 0));
     hold_back();
-    choose_theme(THEME_LCD);
+    choose_face(NP_FACE_LCD);
     Settings settings;
     CHECK(saved_settings(&settings));
-    CHECK_EQUAL(THEME_LCD, settings.options[OPTION_THEME]);
+    CHECK_EQUAL(NP_FACE_LCD, settings.options[OPTION_NOW_PLAYING_FACE]);
+    CHECK_EQUAL(THEME_DARK, settings.options[OPTION_THEME]);
     hold_back();
     tap(KEY_MENU);
     wait_ms(SLIDE_DURATION_MS);
@@ -4160,13 +4163,13 @@ static bool area_shows(Rect area, Color color)
     return false;
 }
 
-static void a_theme_chosen_while_a_track_plays_shows_its_text_on_now_playing(void)
+static void a_face_chosen_while_a_track_plays_shows_its_text_on_now_playing(void)
 {
     start_app_with_library();
     play_first_album_track();
     wait_ms(SLIDE_DURATION_MS);
     hold_back();
-    choose_theme(THEME_CASSETTE);
+    choose_face(NP_FACE_CASSETTE);
     hold_back();
     tap(KEY_MENU);
     wait_ms(SLIDE_DURATION_MS);
@@ -4405,12 +4408,12 @@ int main(void)
         TEST_CASE(entering_a_face_flips_the_header_and_status_bar_at_the_midpoint),
         TEST_CASE(each_face_chrome_background_matches_the_backdrop_that_face_draws),
         TEST_CASE(a_face_over_fjord_shows_on_now_playing_and_fjord_on_the_menus),
-        TEST_CASE(a_face_theme_chosen_in_settings_applies_without_a_restart),
+        TEST_CASE(a_face_chosen_in_settings_applies_without_a_restart),
         TEST_CASE(a_face_theme_stored_before_becomes_dark_with_that_face),
         TEST_CASE(a_face_stored_with_a_colour_theme_keeps_both),
         TEST_CASE(the_standard_face_on_a_colour_theme_draws_no_scene),
         TEST_CASE(a_theme_worn_while_the_screen_is_idle_is_drawn_on_the_next_step),
-        TEST_CASE(a_theme_chosen_while_a_track_plays_shows_its_text_on_now_playing),
+        TEST_CASE(a_face_chosen_while_a_track_plays_shows_its_text_on_now_playing),
         TEST_CASE(a_paused_face_frame_followed_by_an_idle_frame_sends_nothing),
         TEST_CASE(every_face_chrome_meets_the_floors_of_the_roles_it_draws),
         TEST_CASE(the_header_shows_the_time_only_while_the_clock_setting_is_on),

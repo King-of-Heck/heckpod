@@ -80,11 +80,12 @@ static const StringId COVER_COUNT_OPTIONS[2] = {STR_SETTINGS_FIVE_COVERS,
                                                 STR_SETTINGS_THREE_COVERS};
 static const StringId ANIMATION_OPTIONS[ANIMATION_SPEED_COUNT] = {
     STR_SETTINGS_NORMAL, STR_SETTINGS_SLOWER, STR_SETTINGS_FASTER};
-static const StringId THEME_OPTIONS[THEME_COUNT] = {
+static const StringId THEME_OPTIONS[COLOR_THEME_COUNT] = {
     STR_SETTINGS_DARK,     STR_SETTINGS_LIGHT,     STR_SETTINGS_FJORD,
     STR_SETTINGS_DUSK,     STR_SETTINGS_NEON,      STR_SETTINGS_PHOSPHOR,
-    STR_SETTINGS_PAPER,    STR_SETTINGS_OLIVE,     STR_SETTINGS_HIGH_CONTRAST,
-    STR_SETTINGS_CASSETTE, STR_SETTINGS_VU_METERS, STR_SETTINGS_TURNTABLE,
+    STR_SETTINGS_PAPER,    STR_SETTINGS_OLIVE,     STR_SETTINGS_HIGH_CONTRAST};
+static const StringId NP_FACE_OPTIONS[NP_FACE_COUNT] = {
+    STR_SETTINGS_STANDARD, STR_SETTINGS_CASSETTE, STR_SETTINGS_VU_METERS, STR_SETTINGS_TURNTABLE,
     STR_SETTINGS_LCD_DECK};
 static const StringId STATUS_BAR_OPTIONS[2] = {STR_SETTINGS_STANDARD, STR_SETTINGS_LARGE};
 static const StringId POWER_ON_OPTIONS[2] = {STR_SETTINGS_PRESS, STR_SETTINGS_HOLD};
@@ -411,22 +412,23 @@ ECHO_RESIDENT static const SettingChoice CHOICES[SETTINGS_CHOICE_COUNT] = {
     OPTION_CHOICE(STR_SETTINGS_POWER_ON, POWER_ON_OPTIONS, OPTION_POWER_ON),
     {STR_SETTINGS_PLAYBACK_SPEED, NULL, SPEED_OPTIONS, PLAYBACK_SPEED_COUNT, current_speed,
      choose_speed, NULL, 0},
+    OPTION_CHOICE(STR_MENU_NOW_PLAYING, NP_FACE_OPTIONS, OPTION_NOW_PLAYING_FACE),
 };
 
 static int current_theme(const void *context)
 {
     int file = theme_store_current();
-    return file != THEME_STORE_NONE ? THEME_COUNT + file : current_slot(context);
+    return file != THEME_STORE_NONE ? COLOR_THEME_COUNT + file : current_slot(context);
 }
 
 static void choose_theme(void *context, int index)
 {
-    if (index < THEME_COUNT) {
+    if (index < COLOR_THEME_COUNT) {
         choose_slot(context, index);
         theme_store_choose_builtin(index);
         return;
     }
-    (void)theme_store_choose(index - THEME_COUNT);
+    (void)theme_store_choose(index - COLOR_THEME_COUNT);
 }
 
 static const char *accent_name(int accent)
@@ -467,15 +469,15 @@ static ScreenAction open_theme_choice(SettingsEntry *entry)
     SettingsScreens *screens = entry->owner;
     const char **options = theme_store_options();
     int files = options != NULL ? theme_store_scan() : 0;
-    for (int theme = 0; options != NULL && theme < THEME_COUNT + files; theme++) {
-        options[theme] = theme < THEME_COUNT ? i18n_text(THEME_OPTIONS[theme])
-                                             : theme_store_name(theme - THEME_COUNT);
+    for (int theme = 0; options != NULL && theme < COLOR_THEME_COUNT + files; theme++) {
+        options[theme] = theme < COLOR_THEME_COUNT ? i18n_text(THEME_OPTIONS[theme])
+                                             : theme_store_name(theme - COLOR_THEME_COUNT);
     }
     ChoiceConfig config = {
         .title = i18n_text(entry->choice->title),
         .options = options,
         .option_ids = options != NULL ? NULL : entry->choice->options,
-        .option_count = THEME_COUNT + files,
+        .option_count = COLOR_THEME_COUNT + files,
         .current = current_theme,
         .choose = choose_theme,
         .context = entry,
@@ -578,6 +580,7 @@ enum {
     CHOICE_STATUS_BAR,
     CHOICE_POWER_ON,
     CHOICE_PLAYBACK_SPEED,
+    CHOICE_NOW_PLAYING_FACE,
     ROW_BLUETOOTH = SETTINGS_CHOICE_COUNT,
     ROW_EQUALIZER,
     ROW_DATE_TIME,
@@ -614,6 +617,7 @@ ECHO_RESIDENT static const uint8_t ROWS[] = {
     CHOICE_FILTER,      CHOICE_BALANCE,     CHOICE_BLUETOOTH_LEVEL,
     CHOICE_PLAYBACK_SPEED,
     CHOICE_THEME,       CHOICE_ACCENT,      CHOICE_HIGHLIGHT,
+    CHOICE_NOW_PLAYING_FACE,
     CHOICE_BRIGHTNESS,  CHOICE_TIMEOUT,     CHOICE_ORIENTATION,
     CHOICE_ANIMATIONS,  CHOICE_BATTERY,     CHOICE_STATUS_BAR,
     CHOICE_CLOCK,       ROW_FOLDERS,        ROW_RESCAN,
@@ -627,7 +631,7 @@ ECHO_RESIDENT static const uint8_t ROWS[] = {
 enum {
     SOUND_ROWS = 6,
     DISPLAY_FIRST = SETTINGS_TOP_COUNT + SOUND_ROWS,
-    DISPLAY_ROWS = 10,
+    DISPLAY_ROWS = 11,
     LIBRARY_FIRST = DISPLAY_FIRST + DISPLAY_ROWS,
     LIBRARY_ROWS = 9,
     BUTTONS_FIRST = LIBRARY_FIRST + LIBRARY_ROWS,
