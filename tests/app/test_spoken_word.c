@@ -2,11 +2,13 @@
 
 #include "browse_screen.h"
 #include "check.h"
+#include "core/string_builder.h"
 #include "default_theme.h"
 #include "fake_hal.h"
 #include "library/library_browse.h"
 #include "mp4_book.h"
 #include "player.h"
+#include "settings_store.h"
 #include "screens/now_playing_screen.h"
 #include "settings/settings.h"
 #include "spoken_library.h"
@@ -422,6 +424,55 @@ static void a_played_episode_says_so_in_its_show(void)
     CHECK(strcmp("Played", detail_of(episodes, 0)) == 0);
 }
 
+static void music_plays_at_normal_speed(void)
+{
+    start();
+    player_set_speed(&player, 384);
+    play(SPOKEN_SONG_PATH, false);
+    CHECK_EQUAL(256, fake_hal_audio_speed());
+    CHECK_EQUAL(256, player_status(&player).speed_q8);
+}
+
+static void audiobooks_play_at_the_chosen_speed(void)
+{
+    start();
+    player_set_speed(&player, 384);
+    play(SPOKEN_CHAPTER_ONE_PATH, true);
+    CHECK_EQUAL(384, fake_hal_audio_speed());
+    CHECK_EQUAL(384, player_status(&player).speed_q8);
+    player_set_speed(&player, 512);
+    CHECK_EQUAL(512, fake_hal_audio_speed());
+    play(SPOKEN_SONG_PATH, false);
+    CHECK_EQUAL(256, fake_hal_audio_speed());
+    play(SPOKEN_EPISODE_A_PATH, true);
+    CHECK_EQUAL(512, fake_hal_audio_speed());
+}
+
+static void a_saved_speed_is_restored_for_the_next_book(void)
+{
+    start();
+    SettingsStore saved = {.settings = settings_defaults()};
+    saved.settings.options[OPTION_PLAYBACK_SPEED] = PLAYBACK_SPEED_1_75X;
+    settings_store_restore_playback(&saved, &player, SEED);
+    CHECK_EQUAL(256, fake_hal_audio_speed());
+    play(SPOKEN_CHAPTER_ONE_PATH, true);
+    CHECK_EQUAL(448, fake_hal_audio_speed());
+}
+
+static void the_speed_badge_reads_as_a_multiplier(void)
+{
+    static const struct {
+        uint16_t speed_q8;
+        const char *text;
+    } BADGES[] = {{192, "0.75x"}, {320, "1.25x"}, {384, "1.5x"}, {448, "1.75x"}, {512, "2x"}};
+    for (int index = 0; index < 5; index++) {
+        char text[16] = "";
+        StringBuilder builder = string_builder_make(text, sizeof text);
+        now_playing_append_speed(&builder, BADGES[index].speed_q8);
+        CHECK_EQUAL(0, strcmp(BADGES[index].text, text));
+    }
+}
+
 static Color face_strip[STRIP_WIDTH * STRIP_ROWS];
 static NowPlayingScreen face_screen;
 static uint8_t face_options[SETTINGS_OPTION_COUNT];
@@ -501,6 +552,10 @@ int main(void)
         TEST_CASE(holding_play_on_a_book_opens_its_chapters),
         TEST_CASE(spoken_word_lists_never_offer_shuffle_all),
         TEST_CASE(a_played_episode_says_so_in_its_show),
+        TEST_CASE(music_plays_at_normal_speed),
+        TEST_CASE(audiobooks_play_at_the_chosen_speed),
+        TEST_CASE(a_saved_speed_is_restored_for_the_next_book),
+        TEST_CASE(the_speed_badge_reads_as_a_multiplier),
         TEST_CASE(a_playing_face_asks_for_the_next_tick_of_the_position),
         TEST_CASE(a_paused_face_asks_for_no_frame),
     };

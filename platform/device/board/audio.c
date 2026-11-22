@@ -81,7 +81,7 @@ static union {
 } decoding __attribute__((section(".high_ram")));
 static uint32_t music_ring[RING_WORDS];
 static uint8_t stretch_memory[TIME_STRETCH_MEMORY_BYTES] __attribute__((aligned(4)));
-static uint16_t speed_setting = 256;
+static uint16_t speed_offset;
 static WavSource wav_source;
 static SourceKind source_kind;
 static bool unknown_format;
@@ -382,7 +382,7 @@ static void ensure_engine(void)
                                                    .stretch_memory = stretch_memory,
                                                    .stretch_bytes = sizeof stretch_memory});
     audio_engine_set_equalizer(&engine, &equalizer_curve);
-    audio_engine_set_speed(&engine, speed_setting);
+    audio_engine_set_speed(&engine, (uint16_t)(speed_offset + 256u));
     engine_ready = true;
 }
 
@@ -790,7 +790,7 @@ void hal_audio_set_output(HalAudioOutput output)
 
 void hal_audio_set_speed(uint16_t speed_q8)
 {
-    speed_setting = speed_q8;
+    speed_offset = (uint16_t)(speed_q8 - 256u);
     if (engine_ready) {
         audio_engine_set_speed(&engine, speed_q8);
     }

@@ -125,11 +125,17 @@ static void load_chapters(Player *player, uint16_t track)
     hal_file_close(&file);
 }
 
+static void apply_speed(const Player *player)
+{
+    hal_audio_set_speed(player->spoken ? player->speed_q8 : 256);
+}
+
 static void note_spoken(Player *player, uint16_t track)
 {
     char path[PLAYER_PATH_CAPACITY];
     player->spoken =
         track_path(player, track, path, sizeof path) && spoken_kind_of(path) != SPOKEN_NONE;
+    apply_speed(player);
     load_chapters(player, track);
 }
 
@@ -150,6 +156,7 @@ static bool start_current(Player *player, uint32_t start_ms)
         return false;
     }
     player->spoken = spoken_kind_of(path) != SPOKEN_NONE;
+    apply_speed(player);
     load_chapters(player, track);
     start_ms = resume_point(player, track, start_ms);
     player->track = track;
@@ -251,6 +258,7 @@ void player_init(Player *player, const Library *library)
     player->refusal_count = 0;
     player->refusal = (HalAudioRefusal){.problem = HAL_AUDIO_PROBLEM_NONE};
     player->spoken = false;
+    player->speed_q8 = 256;
     player->resume = (PlayerResume){.position_for = NULL, .context = NULL};
     become_idle(player);
     hal_audio_set_volume(player->volume);
@@ -409,6 +417,12 @@ void player_set_repeat(Player *player, RepeatMode repeat)
     if (player->loaded) {
         queue_upcoming(player);
     }
+}
+
+void player_set_speed(Player *player, uint16_t speed_q8)
+{
+    player->speed_q8 = speed_q8;
+    apply_speed(player);
 }
 
 static void take_next(Player *player)
@@ -664,6 +678,7 @@ PlayerStatus player_status(const Player *player)
         .place = player->has_track ? play_queue_place(&player->queue) : (PlayQueuePlace){0, 0},
         .format = current_format(player),
         .spoken = player->has_track && player->spoken,
+        .speed_q8 = player->has_track && player->spoken ? player->speed_q8 : 256,
         .chapters = player->has_track ? player->chapters.count : 0,
         .chapter = player->has_track && player->chapters.count > 0
                        ? mp4_chapter_at(&player->chapters, current_position(player))

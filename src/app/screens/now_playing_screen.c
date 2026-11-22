@@ -810,6 +810,17 @@ static void draw_right_aligned(Canvas *canvas, TextStyle style, Rect area, const
     label_draw(canvas, style, (Label){.area = right, .text = text});
 }
 
+void now_playing_append_speed(StringBuilder *builder, uint16_t speed_q8)
+{
+    uint32_t hundredths = (speed_q8 % 256u) * 100u / 256u;
+    string_builder_append_unsigned(builder, speed_q8 / 256u);
+    if (hundredths != 0) {
+        string_builder_append_char(builder, '.');
+        string_builder_append_unsigned(builder, hundredths % 10 == 0 ? hundredths / 10 : hundredths);
+    }
+    string_builder_append_char(builder, 'x');
+}
+
 static void draw_times(const NowPlayingScreen *now_playing, Canvas *canvas, const Layout *layout)
 {
     const Theme *theme = now_playing->config.theme;
@@ -825,6 +836,13 @@ static void draw_times(const NowPlayingScreen *now_playing, Canvas *canvas, cons
         string_builder_append(&label, i18n_text(STR_MENU_VOLUME));
         StringBuilder level = string_builder_make(remaining, sizeof remaining);
         string_builder_append_unsigned(&level, now_playing->status.volume);
+    } else if (now_playing->status.speed_q8 != 256) {
+        StringBuilder badge = {.buffer = elapsed, .capacity = sizeof elapsed};
+        while (elapsed[badge.length] != '\0') {
+            badge.length++;
+        }
+        string_builder_append(&badge, "  ");
+        now_playing_append_speed(&badge, now_playing->status.speed_q8);
     }
     Rect area = layout->boxes[THEME_LAYOUT_TIMES];
     TextStyle style = {.font = theme->fonts.small, .color = theme->colors->text_secondary};

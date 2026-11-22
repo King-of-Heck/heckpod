@@ -20,7 +20,8 @@ static const char *const TOP[SETTINGS_TOP_COUNT] = {
     "Shuffle", "Repeat",  "Bluetooth", "Equalizer", "Sleep timer",
     "Sound",   "Display", "Library",   "Buttons",   "System"};
 
-static const char *const SOUND[] = {"Gain", "Output", "Filter", "Balance", "Bluetooth level"};
+static const char *const SOUND[] = {"Gain", "Output", "Filter", "Balance", "Bluetooth level",
+                                     "Playback speed"};
 static const char *const DISPLAY[] = {
     "Theme",       "Accent color", "Highlight",       "Brightness",          "Screen timeout",
     "Orientation", "Animations",   "Battery percent", "Portrait status bar", "Clock"};
@@ -127,6 +128,30 @@ static void starting_again_forgets_the_selected_rows(void)
     start();
     open_group(SETTINGS_DISPLAY);
     CHECK_EQUAL(0, screens.group.list.selected);
+}
+
+static void playback_speed_is_in_sound_settings(void)
+{
+    static Player player;
+    static Toast toast;
+    start();
+    screens.context.player = &player;
+    screens.context.toast = &toast;
+    open_group(SETTINGS_SOUND);
+    const MenuItem *row = &screens.rows[5];
+    CHECK_EQUAL(0, strcmp("Playback speed", row->label));
+    CHECK_EQUAL(0, strcmp("1x", row->value(row->context)));
+    row->select(row->context);
+    CHECK_EQUAL(PLAYBACK_SPEED_COUNT, screens.choice.config.option_count);
+    CHECK_EQUAL(0, strcmp("0.75x", screens.choice.config.options[0]));
+    CHECK_EQUAL(0, strcmp("2x", screens.choice.config.options[5]));
+    screens.choice.config.choose(screens.choice.config.context, 3);
+    CHECK_EQUAL(PLAYBACK_SPEED_1_5X, default_store.settings.options[OPTION_PLAYBACK_SPEED]);
+    CHECK_EQUAL(384, player.speed_q8);
+    CHECK_EQUAL(0, strcmp("1.5x", row->value(row->context)));
+    screens.choice.config.choose(screens.choice.config.context, 0);
+    CHECK_EQUAL(PLAYBACK_SPEED_0_75X, default_store.settings.options[OPTION_PLAYBACK_SPEED]);
+    CHECK_EQUAL(192, player.speed_q8);
 }
 
 static const char *const THEME_NAMES[THEME_COUNT] = {
@@ -362,6 +387,7 @@ int main(void)
         TEST_CASE(the_top_level_lists_the_quick_settings_then_the_groups),
         TEST_CASE(each_group_lists_its_rows_in_order),
         TEST_CASE(every_row_but_rescan_opens_a_screen),
+        TEST_CASE(playback_speed_is_in_sound_settings),
         TEST_CASE(a_group_remembers_its_selected_row),
         TEST_CASE(starting_again_forgets_the_selected_rows),
         TEST_CASE(the_theme_choice_lists_every_theme_in_stored_order),

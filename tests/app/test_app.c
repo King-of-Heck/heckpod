@@ -55,6 +55,7 @@ enum {
     SETTINGS_SLEEP_INDEX = 4,
     SETTINGS_FIRST_GROUP_INDEX = 5,
     SOUND_GAIN_ROW = 0,
+    SOUND_SPEED_ROW = 5,
     DISPLAY_THEME_ROW = 0,
     DISPLAY_ACCENT_ROW = 1,
     DISPLAY_HIGHLIGHT_ROW = 2,
@@ -677,6 +678,18 @@ static void gain_is_applied(void)
     move_down(1);
     tap(KEY_PLAY);
     CHECK_EQUAL(HAL_AUDIO_GAIN_HIGH, fake_hal_audio_gain());
+}
+
+static void playback_speed_is_chosen_in_sound_settings_and_saved(void)
+{
+    start_app_with_library();
+    open_setting(SETTINGS_SOUND, SOUND_SPEED_ROW);
+    CHECK(title_is("Playback speed"));
+    move_down(2);
+    tap(KEY_PLAY);
+    Settings settings;
+    CHECK(saved_settings(&settings));
+    CHECK_EQUAL(PLAYBACK_SPEED_1_5X, settings.options[OPTION_PLAYBACK_SPEED]);
 }
 
 static void saved_settings_are_restored_at_start(void)
@@ -4089,6 +4102,7 @@ int main(void)
         TEST_CASE(brightness_is_applied_and_saved),
         TEST_CASE(the_equalizer_opens_from_settings_and_is_applied),
         TEST_CASE(gain_is_applied),
+        TEST_CASE(playback_speed_is_chosen_in_sound_settings_and_saved),
         TEST_CASE(saved_settings_are_restored_at_start),
         TEST_CASE(the_orientation_setting_is_saved),
         TEST_CASE(a_swapping_portrait_turns_the_rocker_around_in_lists),

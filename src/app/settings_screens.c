@@ -40,6 +40,11 @@ static const StringId ORIENTATION_OPTIONS[ORIENTATION_COUNT] = {
     STR_SETTINGS_LANDSCAPE, STR_SETTINGS_PORTRAIT, STR_SETTINGS_PORTRAIT_FLIPPED};
 static const StringId GAIN_OPTIONS[GAIN_LEVEL_COUNT] = {STR_SETTINGS_LOW, STR_SETTINGS_HIGH};
 static const char *const FILTER_OPTIONS[DAC_FILTER_COUNT] = {"1", "2", "3", "4", "5"};
+static const char *const SPEED_OPTIONS[PLAYBACK_SPEED_COUNT] = {"0.75x", "1x",    "1.25x",
+                                                                "1.5x",  "1.75x", "2x"};
+static const uint8_t SPEED_STORED[PLAYBACK_SPEED_COUNT] = {
+    PLAYBACK_SPEED_0_75X, PLAYBACK_SPEED_1X,   PLAYBACK_SPEED_1_25X,
+    PLAYBACK_SPEED_1_5X,  PLAYBACK_SPEED_1_75X, PLAYBACK_SPEED_2X};
 static const char *const BALANCE_OPTIONS[SETTINGS_BALANCE_STEPS] = {
     "L12", "L11", "L10", "L9", "L8", "L7", "L6", "L5", "L4", "L3",  "L2",  "L1", "0",
     "R1",  "R2",  "R3",  "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"};
@@ -243,6 +248,24 @@ static void choose_filter(void *context, int index)
     apply_and_save(context);
 }
 
+static int current_speed(const void *context)
+{
+    int index = 0;
+    while (SPEED_STORED[index] != settings_of(context)->options[OPTION_PLAYBACK_SPEED]) {
+        index++;
+    }
+    return index;
+}
+
+static void choose_speed(void *context, int index)
+{
+    SettingsContext *settings = context;
+    uint8_t stored = SPEED_STORED[index];
+    editable_settings(context)->options[OPTION_PLAYBACK_SPEED] = stored;
+    player_set_speed(settings->player, settings_playback_speed_q8(stored));
+    save(settings);
+}
+
 static int current_balance(const void *context)
 {
     return settings_of(context)->balance;
@@ -386,6 +409,8 @@ ECHO_RESIDENT static const SettingChoice CHOICES[SETTINGS_CHOICE_COUNT] = {
     OPTION_CHOICE(STR_SETTINGS_CLOCK, SWITCH_OPTIONS, OPTION_CLOCK),
     OPTION_CHOICE(STR_SETTINGS_STATUS_BAR, STATUS_BAR_OPTIONS, OPTION_STATUS_BAR),
     OPTION_CHOICE(STR_SETTINGS_POWER_ON, POWER_ON_OPTIONS, OPTION_POWER_ON),
+    {STR_SETTINGS_PLAYBACK_SPEED, NULL, SPEED_OPTIONS, PLAYBACK_SPEED_COUNT, current_speed,
+     choose_speed, NULL, 0},
 };
 
 static int current_theme(const void *context)
@@ -552,6 +577,7 @@ enum {
     CHOICE_CLOCK,
     CHOICE_STATUS_BAR,
     CHOICE_POWER_ON,
+    CHOICE_PLAYBACK_SPEED,
     ROW_BLUETOOTH = SETTINGS_CHOICE_COUNT,
     ROW_EQUALIZER,
     ROW_DATE_TIME,
@@ -586,6 +612,7 @@ ECHO_RESIDENT static const uint8_t ROWS[] = {
     ROW_GROUP + 1,      ROW_GROUP + 2,      ROW_GROUP + 3,
     ROW_GROUP + 4,      CHOICE_GAIN,        CHOICE_OUTPUT,
     CHOICE_FILTER,      CHOICE_BALANCE,     CHOICE_BLUETOOTH_LEVEL,
+    CHOICE_PLAYBACK_SPEED,
     CHOICE_THEME,       CHOICE_ACCENT,      CHOICE_HIGHLIGHT,
     CHOICE_BRIGHTNESS,  CHOICE_TIMEOUT,     CHOICE_ORIENTATION,
     CHOICE_ANIMATIONS,  CHOICE_BATTERY,     CHOICE_STATUS_BAR,
@@ -598,7 +625,7 @@ ECHO_RESIDENT static const uint8_t ROWS[] = {
     CHOICE_USB_PROMPT};
 
 enum {
-    SOUND_ROWS = 5,
+    SOUND_ROWS = 6,
     DISPLAY_FIRST = SETTINGS_TOP_COUNT + SOUND_ROWS,
     DISPLAY_ROWS = 10,
     LIBRARY_FIRST = DISPLAY_FIRST + DISPLAY_ROWS,

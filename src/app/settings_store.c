@@ -82,6 +82,7 @@ void settings_store_restore_playback(const SettingsStore *store, Player *player,
     player_change_volume(player, (int)settings->volume - (int)player_status(player).volume);
     player_set_shuffle(player, settings->shuffle, seed);
     player_set_repeat(player, settings->repeat);
+    player_set_speed(player, settings_playback_speed_q8(settings->options[OPTION_PLAYBACK_SPEED]));
 }
 
 void settings_store_apply_hardware(const Settings *settings)
