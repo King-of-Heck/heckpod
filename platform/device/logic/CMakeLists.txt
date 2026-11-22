@@ -159,6 +159,8 @@ if(CMAKE_CROSSCOMPILING)
         usb_device.c
         PROPERTIES COMPILE_OPTIONS -Os
     )
+    set_source_files_properties(core1_stream.c fat.c PROPERTIES COMPILE_OPTIONS
+        "$<$<STREQUAL:$<TARGET_PROPERTY:NAME>,echo_device_logic>:-Os>")
 endif()
 target_include_directories(echo_device_logic PUBLIC include)
 target_link_libraries(echo_device_logic
