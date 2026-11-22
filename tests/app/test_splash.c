@@ -160,5 +160,6 @@ int main(void)
         TEST_CASE(at_zero_fade_nothing_is_drawn),
         TEST_CASE(drawing_in_strips_matches_drawing_at_once),
     };
+    splash_logo_copy();
     return test_run_all(cases, TEST_CASE_COUNT(cases));
 }

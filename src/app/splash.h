@@ -12,5 +12,6 @@ typedef struct SplashLayout {
 } SplashLayout;
 
 SplashLayout splash_layout(Rect screen, const Font *font, const char *word);
+void splash_logo_copy(void);
 uint8_t splash_logo_alpha(int x, int y);
 void splash_draw(Canvas *canvas, Rect screen, const Theme *theme, uint8_t alpha);

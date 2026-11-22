@@ -9,9 +9,11 @@
 #ifdef ECHO_STARTUP_SECTIONS
 #define ECHO_STARTUP_CODE __attribute__((section(".startup.text"), noinline))
 #define ECHO_STARTUP_ENTRY __attribute__((section(".startup.entry"), used))
+#define ECHO_STARTUP_DATA __attribute__((section(".startup_data")))
 #else
 #define ECHO_STARTUP_CODE
 #define ECHO_STARTUP_ENTRY
+#define ECHO_STARTUP_DATA
 #endif
 
 #ifdef ECHO_NP_FACES_SECTIONS

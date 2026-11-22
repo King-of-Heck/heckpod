@@ -71,8 +71,8 @@ def render(source, style):
               f"    SPLASH_LOGO_WIDTH = {image.width},", f"    SPLASH_LOGO_HEIGHT = {image.height},",
               f"    SPLASH_LOGO_STRIDE = {stride}", "};", "",
               "extern const uint8_t SPLASH_LOGO_ALPHA[SPLASH_LOGO_STRIDE * SPLASH_LOGO_HEIGHT];", ""]
-    lines = ['#include "splash_logo.h"', "",
-             "const uint8_t SPLASH_LOGO_ALPHA[SPLASH_LOGO_STRIDE * SPLASH_LOGO_HEIGHT] = {"]
+    lines = ['#include "splash_logo.h"', "", '#include "core/resident.h"', "",
+             "ECHO_STARTUP_DATA const uint8_t SPLASH_LOGO_ALPHA[SPLASH_LOGO_STRIDE * SPLASH_LOGO_HEIGHT] = {"]
     for start in range(0, len(packed), 12):
         lines.append("    " + ", ".join(f"0x{byte:02X}" for byte in packed[start:start + 12]) + ",")
     lines += ["};", ""]

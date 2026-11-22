@@ -86,6 +86,7 @@ SECTIONS
             LONG(0) LONG(0) LONG(0) LONG(0)
             KEEP(*(.startup.entry))
             *(.startup.text .startup.text.*)
+            *(.startup_data*)
             . = ALIGN(4);
         }
     } > NP_FACES_RAM

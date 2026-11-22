@@ -1021,6 +1021,7 @@ ECHO_STARTUP_CODE static void start_up(void)
     low_battery_init(&app.low_battery);
     app.battery_check_ms = now_ms;
     app.splash = (Fade){.active = false};
+    splash_logo_copy();
     app.now_ms = now_ms;
     CardFilesReport files = card_files_prepare(show_card_setup);
     settings_store_load(&app.settings);

@@ -1,5 +1,6 @@
 #include "splash.h"
 
+#include "core/resident.h"
 #include "gfx/text.h"
 #include "product.h"
 #include "splash_logo.h"
@@ -13,12 +14,19 @@ enum {
     ALPHA_STEP = 5
 };
 
+static uint8_t logo_copy[sizeof SPLASH_LOGO_ALPHA];
+
+ECHO_STARTUP_CODE void splash_logo_copy(void)
+{
+    __builtin_memcpy(logo_copy, SPLASH_LOGO_ALPHA, sizeof logo_copy);
+}
+
 uint8_t splash_logo_alpha(int x, int y)
 {
     if (x < 0 || y < 0 || x >= SPLASH_LOGO_WIDTH || y >= SPLASH_LOGO_HEIGHT) {
         return 0;
     }
-    uint8_t packed = SPLASH_LOGO_ALPHA[y * SPLASH_LOGO_STRIDE + x / PIXELS_PER_BYTE];
+    uint8_t packed = logo_copy[y * SPLASH_LOGO_STRIDE + x / PIXELS_PER_BYTE];
     int shift = (PIXELS_PER_BYTE - 1 - x % PIXELS_PER_BYTE) * BITS_PER_PIXEL;
     return (uint8_t)(((packed >> shift) & PIXEL_MASK) * ALPHA_STEP);
 }
