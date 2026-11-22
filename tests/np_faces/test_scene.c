@@ -1,6 +1,8 @@
 #include <string.h>
 
 #include "check.h"
+#include "gfx/image.h"
+#include "np_faces/face_shapes.h"
 #include "np_faces/scene.h"
 #include "np_faces_test.h"
 
@@ -15,7 +17,14 @@ enum {
     IMMEDIATE = 0x8000,
     FIRST_FREE = 40,
     MOST_BYTES = 256,
-    RED = 0xF800
+    RED = 0xF800,
+    BLUE = 0x001F,
+    GREEN = 0x07E0,
+    YELLOW = 0xFFE0,
+    ART_SIDE = 16,
+    CENTRE_X = 100,
+    CENTRE_Y = 80,
+    ROUND = -1
 };
 
 typedef struct Program {
@@ -72,6 +81,19 @@ static NpTestScene run_themed(const Program *program, const SceneMenu *menu,
     Canvas canvas = canvas_make(pixels, (Rect){0, 0, scene.layout.width, scene.layout.height});
     NowPlayingFrame frame = np_test_frame(&scene);
     frame.menu = menu;
+    scene_draw(&frame, &canvas);
+    return scene;
+}
+
+static NpTestScene run_covered(const Program *program, Image cover)
+{
+    NpTestScene scene = np_test_scene(NP_FACE_STANDARD, NP_TEST_LAYOUTS[0], NP_TEST_PLAYING);
+    static uint32_t work[SCENE_WORK_BYTES / sizeof(uint32_t)];
+    scene.frame.scene = (SceneCode){program->bytes, program->size, NULL, 0, work, sizeof work};
+    scene.frame.cover = cover;
+    np_test_clear(pixels);
+    Canvas canvas = canvas_make(pixels, (Rect){0, 0, scene.layout.width, scene.layout.height});
+    NowPlayingFrame frame = np_test_frame(&scene);
     scene_draw(&frame, &canvas);
     return scene;
 }
@@ -163,6 +185,128 @@ static bool drawn_in(const NpTestScene *scene, Rect area)
         }
     }
     return false;
+}
+
+static Color expected[NP_TEST_PIXELS];
+static Color art[ART_SIDE * ART_SIDE];
+static const Color QUARTERS[4] = {RED, BLUE, GREEN, YELLOW};
+
+static Image numbered(int width, int height)
+{
+    for (int index = 0; index < width * height; index++) {
+        art[index] = (Color)(index + 1);
+    }
+    return (Image){art, width, height};
+}
+
+static void cover_op(Program *program, int x, int y, int radius, int angle)
+{
+    op(program, angle == ROUND ? OP_ROUND_COVER : OP_SPIN_COVER);
+    put(program, number(x));
+    put(program, number(y));
+    put(program, number(radius));
+    if (angle != ROUND) {
+        put(program, number(angle));
+    }
+}
+
+static void draw_picture_disc(Image cover, int x, int y, int radius)
+{
+    np_test_clear(expected);
+    Canvas canvas =
+        canvas_make(expected, (Rect){0, 0, NP_TEST_LAYOUTS[0].width, NP_TEST_LAYOUTS[0].height});
+    int side = 2 * radius;
+    int left = x - radius;
+    int top = y - radius;
+    Quad quad = {left, side, top, side, top, side};
+    for (int column = 0; column < side; column++) {
+        int across = 2 * column + 1 - side;
+        int half = (int)shape_isqrt((uint32_t)(side * side - across * across)) / 2;
+        Canvas strip = canvas_clipped(&canvas, (Rect){left + column, y - half, 1, 2 * half});
+        image_draw_quad(&strip, cover, quad);
+    }
+}
+
+static bool drawn_where_expected(void)
+{
+    for (int index = 0; index < NP_TEST_PIXELS; index++) {
+        if ((pixels[index] != NP_TEST_SENTINEL) != (expected[index] != NP_TEST_SENTINEL)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void round_and_unturned_covers_match_the_picture_disc_pixel_for_pixel(void)
+{
+    static const int RADII[] = {1, 13, 28, 64};
+    static const Point PLACES[] = {{CENTRE_X, CENTRE_Y}, {10, 5}, {315, 160}};
+    static const int SIZES[][2] = {{ART_SIDE, ART_SIDE}, {7, 5}, {2, 2}};
+    static const int ANGLES[] = {ROUND, 0, 256};
+    for (size_t size = 0; size < sizeof SIZES / sizeof SIZES[0]; size++) {
+        Image cover = numbered(SIZES[size][0], SIZES[size][1]);
+        for (size_t place = 0; place < sizeof PLACES / sizeof PLACES[0]; place++) {
+            for (size_t radius = 0; radius < sizeof RADII / sizeof RADII[0]; radius++) {
+                Point at_point = PLACES[place];
+                draw_picture_disc(cover, at_point.x, at_point.y, RADII[radius]);
+                for (size_t angle = 0; angle < sizeof ANGLES / sizeof ANGLES[0]; angle++) {
+                    Program program = {.size = 0};
+                    cover_op(&program, at_point.x, at_point.y, RADII[radius], ANGLES[angle]);
+                    NpTestScene scene = run_covered(&program, cover);
+                    CHECK(np_test_same(pixels, expected, scene.layout));
+                }
+            }
+        }
+    }
+}
+
+static void a_quarter_turn_moves_each_corner_a_quarter_clockwise(void)
+{
+    Program program = {.size = 0};
+    cover_op(&program, CENTRE_X, CENTRE_Y, 28, 64);
+    NpTestScene scene = run_covered(&program, (Image){QUARTERS, 2, 2});
+    CHECK_EQUAL(RED, at(&scene, CENTRE_X + 10, CENTRE_Y - 10));
+    CHECK_EQUAL(BLUE, at(&scene, CENTRE_X + 10, CENTRE_Y + 10));
+    CHECK_EQUAL(YELLOW, at(&scene, CENTRE_X - 10, CENTRE_Y + 10));
+    CHECK_EQUAL(GREEN, at(&scene, CENTRE_X - 10, CENTRE_Y - 10));
+}
+
+static void a_turned_cover_stays_inside_its_circle(void)
+{
+    Image cover = numbered(ART_SIDE, ART_SIDE);
+    draw_picture_disc(cover, CENTRE_X, CENTRE_Y, 20);
+    for (int angle = 0; angle < 256; angle += 5) {
+        Program program = {.size = 0};
+        cover_op(&program, CENTRE_X, CENTRE_Y, 20, angle);
+        run_covered(&program, cover);
+        CHECK(drawn_where_expected());
+    }
+}
+
+static void a_turned_cover_needs_a_cover_and_a_radius_it_can_draw(void)
+{
+    static const int BAD_RADII[] = {0, -3, 16385};
+    for (size_t radius = 0; radius < sizeof BAD_RADII / sizeof BAD_RADII[0]; radius++) {
+        Program program = {.size = 0};
+        op(&program, OP_CONST);
+        put(&program, FIRST_FREE);
+        put(&program, (uint16_t)BAD_RADII[radius]);
+        put(&program, (uint16_t)((uint32_t)BAD_RADII[radius] >> 16));
+        op(&program, OP_SPIN_COVER);
+        put(&program, number(CENTRE_X));
+        put(&program, number(CENTRE_Y));
+        put(&program, FIRST_FREE);
+        put(&program, number(0));
+        NpTestScene scene = run_covered(&program, numbered(ART_SIDE, ART_SIDE));
+        CHECK(!drawn_in(&scene, (Rect){0, 0, scene.layout.width, scene.layout.height}));
+    }
+    Program program = {.size = 0};
+    cover_op(&program, CENTRE_X, CENTRE_Y, 400, 30);
+    NpTestScene scene = run_covered(&program, numbered(ART_SIDE, ART_SIDE));
+    Rect screen = {0, 0, scene.layout.width, scene.layout.height};
+    CHECK(np_test_area_painted(pixels, (NpTestLayout){screen.width, screen.height, screen}));
+    scene = run_covered(&program, (Image){0});
+    CHECK(!drawn_in(&scene, screen));
 }
 
 static void a_scene_computes_and_draws(void)
@@ -446,6 +590,10 @@ int main(void)
         TEST_CASE(a_backdrop_fills_its_area_with_the_theme),
         TEST_CASE(a_tile_draws_the_icon_of_the_item_it_holds),
         TEST_CASE(without_a_menu_or_an_icon_a_tile_draws_no_icon),
+        TEST_CASE(round_and_unturned_covers_match_the_picture_disc_pixel_for_pixel),
+        TEST_CASE(a_quarter_turn_moves_each_corner_a_quarter_clockwise),
+        TEST_CASE(a_turned_cover_stays_inside_its_circle),
+        TEST_CASE(a_turned_cover_needs_a_cover_and_a_radius_it_can_draw),
     };
     return test_run_all(cases, TEST_CASE_COUNT(cases));
 }

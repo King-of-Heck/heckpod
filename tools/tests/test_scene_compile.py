@@ -116,6 +116,17 @@ class LanguageTest(unittest.TestCase):
         self.assertTrue(all(OPS[name]["code"] > OPS["outline"]["code"]
                             for name in ("item", "items", "selected", "menu", "reflect", "backdrop")))
         self.assertEqual(OPS["backdrop"]["code"] + 1, OPS["item_icon"]["code"])
+        self.assertEqual(OPS["item_icon"]["code"] + 1, OPS["spin_cover"]["code"])
+
+    def test_a_turned_cover_takes_a_place_a_radius_and_an_angle(self):
+        code, _ = compiled("spin_cover(77, y + 73, 28, tick)")
+        steps = decoded(code)
+        self.assertEqual(["add", "spin_cover", "end"], [name for name, _ in steps])
+        self.assertEqual([immediate(77), steps[0][1][0], immediate(28), NAMES["inputs"].index("tick")],
+                         steps[1][1])
+        for source in ("spin_cover(1, 2, 3)", "spin_cover(1, 2, 3, 4, 5)"):
+            with self.assertRaises(scene_compile.SceneError, msg=source):
+                compiled(source)
 
     def test_every_built_in_face_compiles(self):
         for path in sorted((ROOT / "assets" / "faces").glob("*.scene")):

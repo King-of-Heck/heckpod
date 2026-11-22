@@ -358,6 +358,7 @@ Places and sizes are pixels on the screen. `ring` takes sixteenths of a pixel fo
 | `clip(x, y, w, h)`, `unclip()` | Draw only inside a box until `unclip()`, up to 4 deep |
 | `cover(x, y, size)` | The cover, square |
 | `round_cover(x, y, radius)` | The cover cut to a circle around (`x`, `y`) |
+| `spin_cover(x, y, radius, angle)` | The same circle of cover turned clockwise by `angle` (256 is a whole turn, as for `sin`; at 0 it is `round_cover`). `(tick % 18) * 256 / 18` turns it at 33⅓ rpm while a track plays |
 | `icon(kind, x, y, w, h, colour)` | `play`, `pause`, `next` or `previous` |
 | `bar(x, y, w, h, track, fill, hot)` | The progress bar; it shows the volume while that changes, in `hot` |
 | `outline(x, y, w, h, colour)` | A one-pixel frame |

@@ -16,7 +16,9 @@ enum {
     TEXT_FIELDS = 7,
     WORD_BITS = 32,
     SHIFT_MASK = 31,
-    REFLECTION_LIGHT = 80
+    REFLECTION_LIGHT = 80,
+    SPIN_MOST_RADIUS = 16384,
+    SPIN_STEP_SHIFT = 16
 };
 
 typedef enum SceneKind {
@@ -309,17 +311,49 @@ ECHO_NP_FACES_CODE static int32_t compute(Machine *machine, SceneOp op)
     }
 }
 
-ECHO_NP_FACES_CODE static void round_cover(Canvas *canvas, Image cover, const int32_t *v)
+ECHO_NP_FACES_CODE static int smaller_of(int first, int second)
 {
-    int side = 2 * v[2];
-    int left = v[0] - v[2];
-    int top = v[1] - v[2];
-    Quad quad = {left, side, top, side, top, side};
-    for (int column = 0; column < side; column++) {
-        int across = 2 * column + 1 - side;
-        int half = (int)shape_isqrt((uint32_t)(side * side - across * across)) / 2;
-        Canvas strip = canvas_clipped(canvas, (Rect){left + column, v[1] - half, 1, 2 * half});
-        image_draw_quad(&strip, cover, quad);
+    return first < second ? first : second;
+}
+
+ECHO_NP_FACES_CODE static int larger_of(int first, int second)
+{
+    return first > second ? first : second;
+}
+
+ECHO_NP_FACES_CODE static int turned(int along, int side)
+{
+    return smaller_of((along + SHAPE_UNIT * side) / (2 * SHAPE_UNIT), side - 1);
+}
+
+ECHO_NP_FACES_CODE static void round_cover(Canvas *canvas, Image cover, const int32_t *v, int angle)
+{
+    int radius = v[2];
+    if (radius <= 0 || radius > SPIN_MOST_RADIUS || cover.width <= 0 || cover.height <= 0) {
+        return;
+    }
+    int side = 2 * radius;
+    int sine = shape_sine((uint8_t)angle);
+    int cosine = shape_cosine((uint8_t)angle);
+    uint32_t step =
+        (((uint32_t)cover.height << SPIN_STEP_SHIFT) + (uint32_t)side - 1) / (uint32_t)side;
+    Rect clip = canvas->clip;
+    int right = smaller_of(v[0] + radius, clip.x + clip.width);
+    int bottom = smaller_of(v[1] + radius, clip.y + clip.height);
+    for (int y = larger_of(v[1] - radius, clip.y); y < bottom; y++) {
+        int down = 2 * (y - v[1]) + 1;
+        int reach = (down < 0 ? -down : down) + 1;
+        for (int x = larger_of(v[0] - radius, clip.x); x < right; x++) {
+            int across = 2 * (x - v[0]) + 1;
+            if (reach * reach + across * across > side * side) {
+                continue;
+            }
+            int column = turned(across * cosine + down * sine, side);
+            int row = turned(down * cosine - across * sine, side);
+            canvas->pixels[(y - canvas->bounds.y) * canvas->bounds.width + x - canvas->bounds.x] =
+                cover.pixels[(int)(((uint32_t)row * step) >> SPIN_STEP_SHIFT) * cover.width +
+                             column * cover.width / side];
+        }
     }
 }
 
@@ -447,8 +481,9 @@ ECHO_NP_FACES_CODE static void draw(Machine *machine, SceneOp op)
         }
         break;
     case SCENE_OP_ROUND_COVER:
+    case SCENE_OP_SPIN_COVER:
         if (machine->frame->cover.pixels != NULL) {
-            round_cover(canvas, machine->frame->cover, v);
+            round_cover(canvas, machine->frame->cover, v, op == SCENE_OP_SPIN_COVER ? v[3] : 0);
         }
         break;
     case SCENE_OP_BAR: {
@@ -491,6 +526,7 @@ ECHO_NP_FACES_CODE static int part_of(SceneOp op)
     switch (op) {
     case SCENE_OP_COVER:
     case SCENE_OP_ROUND_COVER:
+    case SCENE_OP_SPIN_COVER:
         return DRAW_PART_COVERS;
     case SCENE_OP_REFLECT:
         return DRAW_PART_REFLECTIONS;
