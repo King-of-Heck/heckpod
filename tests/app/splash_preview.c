@@ -33,10 +33,14 @@ static int write_ppm(const char *path, const Canvas *canvas)
     return fclose(file) == 0 ? 0 : 1;
 }
 
+static ThemeColors light_colors;
+
 static Theme light(Theme theme)
 {
-    theme.colors.background = COLOR_RGB(244, 244, 247);
-    theme.colors.text = COLOR_RGB(18, 18, 22);
+    light_colors = *theme.colors;
+    light_colors.background = COLOR_RGB(244, 244, 247);
+    light_colors.text = COLOR_RGB(18, 18, 22);
+    theme.colors = &light_colors;
     return theme;
 }
 
@@ -46,7 +50,7 @@ static int render(const char *folder, const char *name, Theme theme)
     snprintf(path, sizeof path, "%s/%s.ppm", folder, name);
     Rect screen = {0, 0, theme.metrics.screen_width, theme.metrics.screen_height};
     Canvas canvas = canvas_make(pixels, screen);
-    canvas_clear(&canvas, theme.colors.background);
+    canvas_clear(&canvas, theme.colors->background);
     splash_draw(&canvas, screen, &theme, FADE_OPAQUE);
     return write_ppm(path, &canvas);
 }

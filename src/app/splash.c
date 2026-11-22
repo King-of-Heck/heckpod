@@ -64,8 +64,8 @@ void splash_draw(Canvas *canvas, Rect screen, const Theme *theme, uint8_t alpha)
         return;
     }
     SplashLayout layout = splash_layout(screen, theme->fonts.title, PRODUCT_NAME);
-    draw_logo(canvas, layout.logo, theme->colors.text, alpha);
-    Color color = color_blend(theme->colors.background, theme->colors.text, alpha);
+    draw_logo(canvas, layout.logo, theme->colors->text, alpha);
+    Color color = color_blend(theme->colors->background, theme->colors->text, alpha);
     TextStyle style = {.font = theme->fonts.title, .color = color};
     label_draw(canvas, style, (Label){.area = layout.word, .text = PRODUCT_NAME});
 }

@@ -11,6 +11,7 @@
 #include "settings/settings.h"
 #include "spoken_library.h"
 #include "spoken_store.h"
+#include "theme_store.h"
 #include "ui/marquee.h"
 
 enum {
@@ -386,6 +387,24 @@ static void holding_play_on_a_book_opens_its_chapters(void)
     CHECK_EQUAL(SPOKEN_AUDIOBOOK, chapters->shelf);
 }
 
+static void spoken_word_lists_never_offer_shuffle_all(void)
+{
+    start();
+    BrowseScreen *books = shelf(SPOKEN_AUDIOBOOK);
+    CHECK_EQUAL(0, books->extra);
+    ScreenAction action = press(books, KEY_GESTURE_LONG_PRESS);
+    CHECK_EQUAL(SCREEN_ACTION_PUSH, action.type);
+    BrowseScreen *chapters = action.target->context;
+    CHECK_EQUAL(SPOKEN_AUDIOBOOK, chapters->shelf);
+    CHECK_EQUAL(0, chapters->extra);
+    BrowseScreen *shows = shelf(SPOKEN_PODCAST);
+    CHECK_EQUAL(0, shows->extra);
+    action = press(shows, KEY_GESTURE_PRESS);
+    BrowseScreen *episodes = action.target->context;
+    CHECK_EQUAL(SPOKEN_PODCAST, episodes->shelf);
+    CHECK_EQUAL(0, episodes->extra);
+}
+
 static void a_played_episode_says_so_in_its_show(void)
 {
     start();
@@ -410,7 +429,7 @@ static uint8_t face_options[SETTINGS_OPTION_COUNT];
 static void show_a_face_at(uint32_t position_ms)
 {
     memset(face_options, 0, sizeof face_options);
-    face_options[OPTION_NOW_PLAYING_FACE] = NP_FACE_CASSETTE;
+    theme_store_start(THEME_CASSETTE);
     NowPlayingConfig config = {
         .player = &player, .library = library, .theme = &DEFAULT_THEME, .options = face_options};
     Screen *screen = now_playing_screen_init(&face_screen, config);
@@ -480,6 +499,7 @@ int main(void)
         TEST_CASE(selecting_a_book_resumes_it),
         TEST_CASE(selecting_a_paused_book_carries_on_playing_it),
         TEST_CASE(holding_play_on_a_book_opens_its_chapters),
+        TEST_CASE(spoken_word_lists_never_offer_shuffle_all),
         TEST_CASE(a_played_episode_says_so_in_its_show),
         TEST_CASE(a_playing_face_asks_for_the_next_tick_of_the_position),
         TEST_CASE(a_paused_face_asks_for_no_frame),

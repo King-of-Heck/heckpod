@@ -31,7 +31,7 @@ static bool inside(Rect inner, Rect outer)
 static Canvas cleared(Color *pixels, Rect area)
 {
     Canvas canvas = canvas_make(pixels, area);
-    canvas_clear(&canvas, DEFAULT_THEME.colors.background);
+    canvas_clear(&canvas, DEFAULT_THEME.colors->background);
     return canvas;
 }
 
@@ -103,9 +103,9 @@ static void at_full_fade_ink_is_text_and_paper_is_background(void)
     SplashLayout layout = splash_layout(LANDSCAPE, DEFAULT_THEME.fonts.title, PRODUCT_NAME);
     Point ink = logo_pixel_with(COLOR_ALPHA_OPAQUE);
     Point paper = logo_pixel_with(0);
-    CHECK_EQUAL(DEFAULT_THEME.colors.text,
+    CHECK_EQUAL(DEFAULT_THEME.colors->text,
                 canvas_pixel_at(&canvas, layout.logo.x + ink.x, layout.logo.y + ink.y));
-    CHECK_EQUAL(DEFAULT_THEME.colors.background,
+    CHECK_EQUAL(DEFAULT_THEME.colors->background,
                 canvas_pixel_at(&canvas, layout.logo.x + paper.x, layout.logo.y + paper.y));
 }
 
@@ -117,7 +117,7 @@ static void at_full_fade_the_word_is_drawn(void)
     int inked = 0;
     for (int y = layout.word.y; y < layout.word.y + layout.word.height; y++) {
         for (int x = layout.word.x; x < layout.word.x + layout.word.width; x++) {
-            inked += canvas_pixel_at(&canvas, x, y) == DEFAULT_THEME.colors.text ? 1 : 0;
+            inked += canvas_pixel_at(&canvas, x, y) == DEFAULT_THEME.colors->text ? 1 : 0;
         }
     }
     CHECK(inked > 0);
@@ -128,7 +128,7 @@ static void at_zero_fade_nothing_is_drawn(void)
     Canvas canvas = cleared(whole, LANDSCAPE);
     splash_draw(&canvas, LANDSCAPE, &DEFAULT_THEME, 0);
     for (int index = 0; index < WIDTH * HEIGHT; index++) {
-        CHECK_EQUAL(DEFAULT_THEME.colors.background, whole[index]);
+        CHECK_EQUAL(DEFAULT_THEME.colors->background, whole[index]);
     }
 }
 
