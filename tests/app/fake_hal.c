@@ -882,10 +882,8 @@ static void register_written(const char *path, uint32_t length)
     for (int index = 0; index < fake.file_count; index++) {
         if (strcmp(fake.files[index].path, path) == 0) {
             fake.files[index].size = length;
-            fake.files[index].bytes =
-                fake.files[index].bytes == NULL ? slot->bytes : fake.files[index].bytes;
-            fake.files[index].stored =
-                fake.files[index].bytes == slot->bytes ? length : fake.files[index].stored;
+            fake.files[index].bytes = slot->bytes;
+            fake.files[index].stored = length;
             return;
         }
     }

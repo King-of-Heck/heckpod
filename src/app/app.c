@@ -227,7 +227,8 @@ static int theme_key(const Settings *settings)
 {
     return (int)settings->orientation | settings->options[OPTION_ACCENT] << 2 |
            settings->options[OPTION_HIGHLIGHT] << 5 | settings->options[OPTION_STATUS_BAR] << 7 |
-           settings->options[OPTION_THEME] << 8 | theme_store_revision() << 12;
+           settings->options[OPTION_THEME] << 8 | theme_store_revision() << 12 |
+           settings->options[OPTION_NOW_PLAYING_FACE] << 20;
 }
 
 static void wear_spacing(ThemeMetrics *metrics, const uint8_t *spacing)
@@ -272,17 +273,15 @@ static void wear_theme_file(Theme *theme, Theme *stage)
     }
 }
 
-static void adopt_face_theme(void)
+ECHO_STARTUP_CODE static void split_face_theme(void)
 {
     uint8_t *options = app.settings.settings.options;
-    uint8_t face = options[OPTION_NOW_PLAYING_FACE];
-    if (face == NP_FACE_STANDARD) {
+    uint8_t theme = options[OPTION_THEME];
+    if (theme < COLOR_THEME_COUNT) {
         return;
     }
-    if (face < NP_FACE_COUNT) {
-        options[OPTION_THEME] = (uint8_t)(THEME_CASSETTE + face - NP_FACE_CASSETTE);
-    }
-    options[OPTION_NOW_PLAYING_FACE] = NP_FACE_STANDARD;
+    options[OPTION_NOW_PLAYING_FACE] = (uint8_t)(NP_FACE_CASSETTE + theme - THEME_CASSETTE);
+    options[OPTION_THEME] = THEME_DARK;
     (void)settings_store_save(&app.settings);
 }
 
@@ -291,6 +290,7 @@ static void apply_orientation(void)
     const Settings *settings = &app.settings.settings;
     Orientation orientation = settings->orientation;
     theme_store_follow(settings->options[OPTION_THEME]);
+    theme_store_set_face(settings->options[OPTION_NOW_PLAYING_FACE]);
     app.shown_theme = theme_key(settings);
     bool portrait = orientation != ORIENTATION_LANDSCAPE;
     ThemeChoice choice = {.accent = settings->options[OPTION_ACCENT],
@@ -1025,7 +1025,7 @@ ECHO_STARTUP_CODE static void start_up(void)
     app.now_ms = now_ms;
     CardFilesReport files = card_files_prepare(show_card_setup);
     settings_store_load(&app.settings);
-    adopt_face_theme();
+    split_face_theme();
     theme_store_start(app.settings.settings.options[OPTION_THEME]);
     hal_power_confirm_start(app.settings.settings.options[OPTION_POWER_ON] == POWER_ON_HOLD);
     clock_store_start(&app.clock, &app.settings.settings, now_ms);

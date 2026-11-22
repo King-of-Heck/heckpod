@@ -2639,7 +2639,7 @@ static void the_dark_and_light_themes_keep_every_colour(void)
 
 static void every_theme_redraws_the_screen_in_its_own_background(void)
 {
-    for (int theme = 0; theme < THEME_COUNT; theme++) {
+    for (int theme = 0; theme < COLOR_THEME_COUNT; theme++) {
         for (int status_bar = 0; status_bar < 2; status_bar++) {
             ThemeSetup setup = {.choice = {.theme = theme}, .status_bar = status_bar};
             start_app_with_theme(setup);
@@ -2665,7 +2665,7 @@ static void choosing_a_theme_redraws_the_screen_in_the_new_background(void)
 
 static void every_theme_change_redraws_with_a_large_status_bar(void)
 {
-    for (int theme = THEME_DARK; theme + 2 < THEME_COUNT; theme++) {
+    for (int theme = THEME_DARK; theme + 2 < COLOR_THEME_COUNT; theme++) {
         start_app_with_theme(
             (ThemeSetup){.choice = {.theme = theme}, .status_bar = STATUS_BAR_LARGE});
         step();
@@ -3258,6 +3258,29 @@ static void each_face_chrome_background_matches_the_backdrop_that_face_draws(voi
         const ThemeColors *chrome = face_chrome(face);
         CHECK_EQUAL(chrome->background, fake_hal_pixel(0, DEFAULT_THEME.metrics.header_height));
     }
+}
+
+static void a_face_over_fjord_shows_on_now_playing_and_fjord_on_the_menus(void)
+{
+    Settings settings = settings_defaults();
+    settings.options[OPTION_THEME] = THEME_FJORD;
+    settings.options[OPTION_NOW_PLAYING_FACE] = NP_FACE_CASSETTE;
+    start_app_with_settings(&settings);
+    fake_hal_set_np_faces(true);
+    play_first_album_track();
+    wait_ms(SLIDE_DURATION_MS);
+    step();
+    CHECK(title_is("Now Playing"));
+    const ThemeColors *face = face_chrome(NP_FACE_CASSETTE);
+    CHECK(face != NULL);
+    CHECK_EQUAL(face->header_top, fake_hal_pixel(2, 0));
+    CHECK_EQUAL(face->background, fake_hal_pixel(0, DEFAULT_THEME.metrics.header_height));
+    hold_back();
+    wait_ms(SLIDE_DURATION_MS);
+    CHECK(title_is("HeckPod"));
+    Theme fjord = styled_theme(false, (StyledChoice){.theme = THEME_FJORD});
+    CHECK_EQUAL(fjord.colors->background, fake_hal_pixel(2, HAL_DISPLAY_HEIGHT - 1));
+    CHECK(fake_hal_pixel(2, 0) != face->header_top);
 }
 
 static void choose_theme(int theme)
@@ -4084,13 +4107,45 @@ static void a_face_that_cannot_be_read_leaves_standard_and_the_home_scene(void)
     CHECK_EQUAL(home_bytes, code.code_size);
 }
 
-static void a_face_chosen_before_becomes_its_theme(void)
+static void a_face_theme_stored_before_becomes_dark_with_that_face(void)
+{
+    for (int theme = THEME_CASSETTE; theme < THEME_COUNT; theme++) {
+        Settings settings = settings_defaults();
+        settings.options[OPTION_THEME] = (uint8_t)theme;
+        start_app_with_settings(&settings);
+        Settings saved;
+        CHECK(saved_settings(&saved));
+        CHECK_EQUAL(THEME_DARK, saved.options[OPTION_THEME]);
+        CHECK_EQUAL(NP_FACE_CASSETTE + theme - THEME_CASSETTE,
+                    saved.options[OPTION_NOW_PLAYING_FACE]);
+        CHECK_EQUAL(0, strcmp("Dark", theme_store_package()->name));
+        CHECK(theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    }
+}
+
+static void a_face_stored_with_a_colour_theme_keeps_both(void)
 {
     Settings settings = settings_defaults();
+    settings.options[OPTION_THEME] = THEME_FJORD;
     settings.options[OPTION_NOW_PLAYING_FACE] = NP_FACE_TURNTABLE;
     start_app_with_settings(&settings);
+    Settings saved;
+    CHECK(saved_settings(&saved));
+    CHECK_EQUAL(THEME_FJORD, saved.options[OPTION_THEME]);
+    CHECK_EQUAL(NP_FACE_TURNTABLE, saved.options[OPTION_NOW_PLAYING_FACE]);
+    CHECK_EQUAL(0, strcmp("Fjord", theme_store_package()->name));
     CHECK(theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
-    CHECK_EQUAL(0, strcmp("Turntable", theme_store_package()->name));
+}
+
+static void the_standard_face_on_a_colour_theme_draws_no_scene(void)
+{
+    SceneCode code;
+    const ThemeColors *chrome = NULL;
+    Settings settings = settings_defaults();
+    settings.options[OPTION_THEME] = THEME_FJORD;
+    start_app_with_settings(&settings);
+    CHECK(!theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    CHECK(!theme_store_scene(THEME_SCENE_NOW_PLAYING, &code, &chrome));
 }
 
 static bool area_shows(Rect area, Color color)
@@ -4349,8 +4404,11 @@ int main(void)
         TEST_CASE(leaving_a_face_flips_the_header_and_status_bar_at_the_midpoint),
         TEST_CASE(entering_a_face_flips_the_header_and_status_bar_at_the_midpoint),
         TEST_CASE(each_face_chrome_background_matches_the_backdrop_that_face_draws),
+        TEST_CASE(a_face_over_fjord_shows_on_now_playing_and_fjord_on_the_menus),
         TEST_CASE(a_face_theme_chosen_in_settings_applies_without_a_restart),
-        TEST_CASE(a_face_chosen_before_becomes_its_theme),
+        TEST_CASE(a_face_theme_stored_before_becomes_dark_with_that_face),
+        TEST_CASE(a_face_stored_with_a_colour_theme_keeps_both),
+        TEST_CASE(the_standard_face_on_a_colour_theme_draws_no_scene),
         TEST_CASE(a_theme_worn_while_the_screen_is_idle_is_drawn_on_the_next_step),
         TEST_CASE(a_theme_chosen_while_a_track_plays_shows_its_text_on_now_playing),
         TEST_CASE(a_paused_face_frame_followed_by_an_idle_frame_sends_nothing),

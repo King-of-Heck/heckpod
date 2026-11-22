@@ -144,6 +144,12 @@ enum {
 };
 
 enum {
+    COLOR_THEME_COUNT = THEME_CASSETTE
+};
+
+_Static_assert(THEME_LCD + 1 == THEME_COUNT, "the four face themes end the built-in themes");
+
+enum {
     NP_FACE_STANDARD,
     NP_FACE_CASSETTE,
     NP_FACE_VU_METERS,
