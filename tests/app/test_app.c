@@ -3974,6 +3974,116 @@ static void a_theme_with_a_scene_draws_now_playing_with_it(void)
     CHECK_EQUAL(own_colors()->header_top, fake_hal_pixel(2, 0));
 }
 
+static uint32_t le32_at(const uint8_t *bytes)
+{
+    return (uint32_t)bytes[0] | (uint32_t)bytes[1] << 8 | (uint32_t)bytes[2] << 16 |
+           (uint32_t)bytes[3] << 24;
+}
+
+static uint32_t put_home_scene_on_card(const char *card_name)
+{
+    uint32_t size = 0;
+    uint8_t *bytes = theme_fixture_on_card("cassette.echotheme", card_name, &size);
+    ThemePackage package = {0};
+    CHECK(theme_package_decode(bytes, size, &package));
+    uint32_t core = le32_at(bytes + 8);
+    for (uint32_t at = 0; at + THEME_PACKAGE_ASSET_ENTRY_BYTES <= core; at++) {
+        if (bytes[at] == THEME_ASSET_SCENE && le32_at(bytes + at + 8) == package.scene.offset &&
+            le32_at(bytes + at + 12) == package.scene.checksum) {
+            bytes[at] = THEME_ASSET_HOME_SCENE;
+        }
+    }
+    uint32_t sum = hash_update(HASH_START, bytes + 16, core - 16);
+    for (int index = 0; index < 4; index++) {
+        bytes[12 + index] = (uint8_t)(sum >> (8 * index));
+    }
+    ThemePackage moved = {0};
+    CHECK(theme_package_decode(bytes, size, &moved));
+    CHECK_EQUAL(0, moved.scene.code_bytes);
+    CHECK(moved.home_scene.code_bytes > 0);
+    return moved.home_scene.code_bytes;
+}
+
+static uint32_t chrome_bytes_of(ThemePackageScene scene)
+{
+    return (scene.flags & THEME_SCENE_CHROME) != 0 ? THEME_SCENE_CHROME_BYTES : 0;
+}
+
+static bool is_face_scene(const SceneCode *code, int theme)
+{
+    const ThemePackage *package = builtin_package(theme, tinted_next++);
+    CHECK(package != NULL);
+    const uint8_t *bytes =
+        BUILTIN_THEMES[theme].bytes + package->scene.offset + chrome_bytes_of(package->scene);
+    return code->code_size == package->scene.code_bytes &&
+           memcmp(code->code, bytes, package->scene.code_bytes) == 0;
+}
+
+static void a_face_draws_now_playing_from_its_own_theme_and_home_from_the_worn_one(void)
+{
+    fake_hal_reset();
+    uint32_t home_bytes = put_home_scene_on_card("Homely.echotheme");
+    theme_store_start(THEME_DARK);
+    CHECK(theme_store_wear("Homely"));
+    CHECK(!theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    CHECK(theme_store_has_scene(THEME_SCENE_HOME));
+    theme_store_set_face(NP_FACE_LCD);
+    CHECK(theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    SceneCode now_playing;
+    const ThemeColors *chrome = NULL;
+    CHECK(theme_store_scene(THEME_SCENE_NOW_PLAYING, &now_playing, &chrome));
+    CHECK(is_face_scene(&now_playing, THEME_LCD));
+    const ThemePackage *lcd = builtin_package(THEME_LCD, tinted_next++);
+    CHECK(chrome != NULL);
+    CHECK_EQUAL(0, memcmp(chrome, BUILTIN_THEMES[THEME_LCD].bytes + lcd->scene.offset,
+                          THEME_SCENE_CHROME_BYTES));
+    SceneCode home;
+    const ThemeColors *home_chrome = NULL;
+    CHECK(theme_store_scene(THEME_SCENE_HOME, &home, &home_chrome));
+    CHECK_EQUAL(home_bytes, home.code_size);
+    CHECK(theme_store_card());
+    CHECK_EQUAL(0, strcmp("Homely", theme_store_package()->name));
+}
+
+static void changing_the_face_reloads_the_now_playing_scene(void)
+{
+    SceneCode code;
+    const ThemeColors *chrome = NULL;
+    fake_hal_reset();
+    theme_store_start(THEME_FJORD);
+    theme_store_set_face(NP_FACE_LCD);
+    CHECK(theme_store_scene(THEME_SCENE_NOW_PLAYING, &code, &chrome));
+    CHECK(is_face_scene(&code, THEME_LCD));
+    theme_store_set_face(NP_FACE_CASSETTE);
+    CHECK(theme_store_scene(THEME_SCENE_NOW_PLAYING, &code, &chrome));
+    CHECK(is_face_scene(&code, THEME_CASSETTE));
+    CHECK_EQUAL(0, strcmp("Fjord", theme_store_package()->name));
+    theme_store_set_face(NP_FACE_STANDARD);
+    CHECK(!theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    CHECK(!theme_store_scene(THEME_SCENE_NOW_PLAYING, &code, &chrome));
+    theme_store_set_face(NP_FACE_OPTION_SLOTS - 1);
+    CHECK(!theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    theme_store_set_face(NP_FACE_TURNTABLE);
+    theme_store_start(THEME_FJORD);
+    CHECK(!theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+}
+
+static void a_face_that_cannot_be_read_leaves_standard_and_the_home_scene(void)
+{
+    SceneCode code;
+    const ThemeColors *chrome = NULL;
+    fake_hal_reset();
+    uint32_t home_bytes = put_home_scene_on_card("Homely.echotheme");
+    theme_store_start(THEME_DARK);
+    CHECK(theme_store_wear("Homely"));
+    fake_hal_set_builtin_themes(false);
+    theme_store_set_face(NP_FACE_VU_METERS);
+    CHECK(theme_store_has_scene(THEME_SCENE_NOW_PLAYING));
+    CHECK(!theme_store_scene(THEME_SCENE_NOW_PLAYING, &code, &chrome));
+    CHECK(theme_store_scene(THEME_SCENE_HOME, &code, &chrome));
+    CHECK_EQUAL(home_bytes, code.code_size);
+}
+
 static void a_face_chosen_before_becomes_its_theme(void)
 {
     Settings settings = settings_defaults();
@@ -4027,6 +4137,9 @@ int main(void)
         TEST_CASE(a_remembered_theme_file_colours_the_screen_from_the_first_frame),
         TEST_CASE(a_theme_file_draws_its_own_selection_box),
         TEST_CASE(a_theme_with_a_scene_draws_now_playing_with_it),
+        TEST_CASE(a_face_draws_now_playing_from_its_own_theme_and_home_from_the_worn_one),
+        TEST_CASE(changing_the_face_reloads_the_now_playing_scene),
+        TEST_CASE(a_face_that_cannot_be_read_leaves_standard_and_the_home_scene),
         TEST_CASE(a_theme_file_offers_its_accents_and_the_flat_highlight),
         TEST_CASE(without_its_built_in_themes_the_player_still_starts_dark),
         TEST_CASE(a_theme_file_spaces_the_rows_it_draws),

@@ -20,6 +20,7 @@ extern const char THEME_STORE_FOLDER[];
 
 void theme_store_start(int builtin);
 void theme_store_follow(int builtin);
+void theme_store_set_face(int face);
 const ThemePackage *theme_store_package(void);
 bool theme_store_card(void);
 const char *theme_store_accent_name(int index);

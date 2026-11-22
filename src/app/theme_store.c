@@ -23,7 +23,7 @@ enum {
 typedef struct SceneStamp {
     uint32_t magic;
     uint32_t wipes;
-    uint32_t revision;
+    uint32_t key;
     ThemePackageScene scenes[THEME_SCENE_COUNT];
 } SceneStamp;
 
@@ -45,6 +45,7 @@ typedef struct ThemeMemory {
     int8_t builtin;
     uint8_t revision;
     uint8_t count;
+    uint8_t face;
     char names[THEME_STORE_FILES][THEME_PACKAGE_NAME_BYTES];
     const char *options[THEME_STORE_OPTIONS];
     char accent_name[THEME_PACKAGE_NAME_BYTES];
@@ -55,6 +56,8 @@ typedef struct ThemeMemory {
 
 _Static_assert(sizeof(ThemeMemory) <= HAL_THEME_MEMORY_BYTES,
                "the theme memory the platform hands over holds the store");
+_Static_assert(THEME_LCD - THEME_CASSETTE == NP_FACE_LCD - NP_FACE_CASSETTE,
+               "each face has its built-in theme, in the same order");
 
 static ThemeMemory *memory(void)
 {
@@ -220,8 +223,18 @@ void theme_store_start(int builtin)
         return;
     }
     block->count = 0;
+    block->face = NP_FACE_STANDARD;
     block->builtin = (int8_t)builtin;
     apply(block, remembered(name) ? name : "");
+}
+
+void theme_store_set_face(int face)
+{
+    ThemeMemory *block = memory();
+    if (block != NULL) {
+        block->face =
+            (uint8_t)(face > NP_FACE_STANDARD && face < NP_FACE_COUNT ? face : NP_FACE_STANDARD);
+    }
 }
 
 void theme_store_follow(int builtin)
@@ -392,7 +405,23 @@ static ThemePackageScene scene_slot(const ThemePackage *package, int which)
 bool theme_store_has_scene(int which)
 {
     const ThemeMemory *block = memory();
-    return block != NULL && block->active && scene_slot(&block->package, which).code_bytes > 0;
+    if (block == NULL) {
+        return false;
+    }
+    if (which == THEME_SCENE_NOW_PLAYING && block->face != NP_FACE_STANDARD) {
+        return true;
+    }
+    return block->active && scene_slot(&block->package, which).code_bytes > 0;
+}
+
+static int face_theme(const ThemeMemory *block)
+{
+    return THEME_CASSETTE + block->face - NP_FACE_CASSETTE;
+}
+
+static uint32_t scene_key(const ThemeMemory *block)
+{
+    return (uint32_t)block->revision | (uint32_t)block->face << 8;
 }
 
 static uint32_t scene_bytes(ThemePackageScene scene)
@@ -413,26 +442,51 @@ static bool read_scene(ThemeSource *source, ThemePackageScene scene, uint8_t *ro
                           hash_update(HASH_START, room, bytes) == scene.checksum);
 }
 
+static ThemePackageScene face_scene(int theme, uint8_t *room, uint32_t room_bytes)
+{
+    ThemePackage package = {0};
+    ThemeSource source;
+    if (!open_builtin(theme, &source)) {
+        return package.scene;
+    }
+    uint32_t held = source.size < THEME_PACKAGE_MAX_BYTES ? source.size : THEME_PACKAGE_MAX_BYTES;
+    bool read = held <= room_bytes && theme_source_read(&source, 0, room, held) &&
+                theme_package_decode(room, held, &package);
+    return read ? package.scene : (ThemePackageScene){0};
+}
+
+static bool read_slot(const ThemeMemory *block, bool face, ThemePackageScene scene, uint8_t *room)
+{
+    ThemeSource source;
+    if (scene_bytes(scene) == 0) {
+        return true;
+    }
+    bool opened = face ? open_builtin(face_theme(block), &source) : open_worn(block, &source);
+    if (!opened) {
+        return false;
+    }
+    bool read = read_scene(&source, scene, room);
+    close_source(&source);
+    return read;
+}
+
 static bool load_scenes(ThemeMemory *block, uint8_t *memory, uint32_t size)
 {
     SceneStamp *stamp = (SceneStamp *)(void *)memory;
     uint8_t *room = memory + SCENE_HEADER_BYTES;
-    ThemePackageScene first = block->package.scene;
-    ThemePackageScene second = block->package.home_scene;
-    ThemeSource source;
+    uint32_t room_bytes = size - SCENE_SPARE_BYTES;
+    bool faced = block->face != NP_FACE_STANDARD;
     stamp->magic = 0;
-    if (section_bytes(first) + section_bytes(second) > size - SCENE_SPARE_BYTES ||
-        !open_worn(block, &source)) {
+    ThemePackageScene first =
+        faced ? face_scene(face_theme(block), room, room_bytes) : block->package.scene;
+    ThemePackageScene second = block->package.home_scene;
+    if (section_bytes(first) + section_bytes(second) > room_bytes ||
+        !read_slot(block, faced, first, room) ||
+        !read_slot(block, false, second, room + section_bytes(first))) {
         return false;
     }
-    bool loaded = read_scene(&source, first, room) &&
-                  read_scene(&source, second, room + section_bytes(first));
-    close_source(&source);
-    if (loaded) {
-        *stamp =
-            (SceneStamp){SCENE_MAGIC, hal_system_scene_wipes(), block->revision, {first, second}};
-    }
-    return loaded;
+    *stamp = (SceneStamp){SCENE_MAGIC, hal_system_scene_wipes(), scene_key(block), {first, second}};
+    return true;
 }
 
 bool theme_store_scene(int which, SceneCode *code, const ThemeColors **chrome)
@@ -444,14 +498,18 @@ bool theme_store_scene(int which, SceneCode *code, const ThemeColors **chrome)
         return false;
     }
     const SceneStamp *stamp = (const SceneStamp *)(const void *)place;
+    bool faced = block->face != NP_FACE_STANDARD;
     bool current = stamp->magic == SCENE_MAGIC && stamp->wipes == hal_system_scene_wipes() &&
-                   stamp->revision == block->revision &&
-                   stamp->scenes[0].checksum == block->package.scene.checksum &&
+                   stamp->key == scene_key(block) &&
+                   (faced || stamp->scenes[0].checksum == block->package.scene.checksum) &&
                    stamp->scenes[1].checksum == block->package.home_scene.checksum;
     if (!current && !load_scenes(block, place, size)) {
         return false;
     }
     ThemePackageScene scene = stamp->scenes[which == THEME_SCENE_HOME];
+    if (scene.code_bytes == 0) {
+        return false;
+    }
     const uint8_t *section = place + SCENE_HEADER_BYTES +
                              (which == THEME_SCENE_HOME ? section_bytes(stamp->scenes[0]) : 0);
     bool tinted = (scene.flags & THEME_SCENE_CHROME) != 0;
