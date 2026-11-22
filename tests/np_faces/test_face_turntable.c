@@ -11,14 +11,17 @@ enum {
     ARM_REST = 140,
     ARM_STEPS = 12,
     TUBE_RADIUS = 60,
-    GLINT_STEPS = 18,
-    GLINT_REACH = 59,
-    GLINT_ROWS = 24,
+    TURN_TICKS = 18,
+    TURN_START = 1386,
+    LABEL_RADIUS = 28,
     TICK_BASE = 1396,
     POSITION_MS = 139600,
     FALLBACK_LEVEL = 8,
     FULL_LEVEL = 15,
     COVER_RED = 0xF800,
+    COVER_BLUE = 0x001F,
+    COVER_GREEN = 0x07E0,
+    COVER_YELLOW = 0xFFE0,
     FAR_STEP = 6,
     BAR_PROBE = 5,
     BAR_BETWEEN = 105,
@@ -35,9 +38,12 @@ enum {
 #define TAN_DIM COLOR_RGB(192, 160, 120)
 #define AMBER COLOR_RGB(248, 164, 40)
 #define LABEL_RED COLOR_RGB(176, 36, 32)
+#define GROOVE COLOR_RGB(38, 38, 46)
+#define SHEEN COLOR_RGB(42, 42, 52)
 
 static Color pixels[NP_TEST_PIXELS];
 static Color other[NP_TEST_PIXELS];
+static const Color QUARTERS[4] = {COVER_RED, COVER_BLUE, COVER_GREEN, COVER_YELLOW};
 
 static NpTestScene scene_of(int layout, NpTestState state)
 {
@@ -123,11 +129,29 @@ static Color bar_pixel(const NpTestScene *scene, int offset)
     return np_test_pixel(pixels, scene->layout, bar.x + offset, bar.y + 1);
 }
 
-static bool rows_differ(const Color *first, const Color *second, NpTestLayout layout, int row)
+static NpTestScene quartered(NpTestScene scene)
 {
-    for (int x = 0; x < layout.width; x++) {
-        if (np_test_pixel(first, layout, x, row) != np_test_pixel(second, layout, x, row)) {
-            return true;
+    scene.frame.cover = (Image){QUARTERS, 2, 2};
+    return scene;
+}
+
+static Rect label_box(const NpTestScene *scene)
+{
+    Point centre = centre_of(scene);
+    return (Rect){centre.x - LABEL_RADIUS, centre.y - LABEL_RADIUS, 2 * LABEL_RADIUS,
+                  2 * LABEL_RADIUS};
+}
+
+static bool differs_outside(const Color *first, const Color *second, NpTestLayout layout, Rect box)
+{
+    for (int y = 0; y < layout.height; y++) {
+        for (int x = 0; x < layout.width; x++) {
+            bool inside =
+                x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
+            if (!inside &&
+                np_test_pixel(first, layout, x, y) != np_test_pixel(second, layout, x, y)) {
+                return true;
+            }
         }
     }
     return false;
@@ -212,35 +236,42 @@ static void the_backdrop_runs_from_walnut_top_to_walnut_bottom(void)
     }
 }
 
-static void a_cover_fills_the_record_as_a_picture_disc(void)
+static void a_cover_fills_only_the_label(void)
 {
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
         NpTestScene scene = scene_of(layout, NP_TEST_PLAYING);
-        scene.frame.tick = GLINT_STEPS / 4;
         CHECK_EQUAL(COVER_RED, probe(&scene, 10, 10));
-        CHECK_EQUAL(COVER_RED, probe(&scene, -42, -42));
-        CHECK_EQUAL(COVER_RED, probe(&scene, -62, 0));
-        CHECK_EQUAL(COVER_RED, probe(&scene, 0, -62));
-        CHECK_EQUAL(VINYL, probe(&scene, 4, 0));
+        CHECK_EQUAL(COVER_RED, probe(&scene, -18, -18));
+        CHECK_EQUAL(COVER_RED, probe(&scene, 0, 2 - LABEL_RADIUS));
+        CHECK_EQUAL(COVER_RED, probe(&scene, LABEL_RADIUS - 2, 0));
+        CHECK_EQUAL(VINYL, probe(&scene, 0, LABEL_RADIUS + 2));
+        CHECK(probe(&scene, -42, -42) != COVER_RED);
+        CHECK(probe(&scene, 0, -62) != COVER_RED);
+        CHECK(probe(&scene, -62, 0) != COVER_RED);
         CHECK_EQUAL(ALU, probe(&scene, 0, 0));
         CHECK_EQUAL(ALU, probe(&scene, 0, -65));
-        CHECK(probe(&scene, -50, -50) != COVER_RED);
-        CHECK(probe(&scene, -60, 40) != COVER_RED);
     }
 }
 
-static void a_picture_disc_has_no_grooves_but_the_glint_still_turns(void)
+static void the_vinyl_has_four_fine_grooves_and_a_sheen_that_stays_still(void)
 {
+    static const NpTestState STATES[] = {NP_TEST_PLAYING, NP_TEST_NO_COVER};
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
-        NpTestScene scene = scene_of(layout, NP_TEST_PLAYING);
-        scene.frame.tick = GLINT_STEPS / 4;
-        CHECK_EQUAL(COVER_RED, probe(&scene, -32, -32));
-        CHECK_EQUAL(COVER_RED, probe(&scene, -37, -37));
-        CHECK_EQUAL(COVER_RED, probe(&scene, -42, -42));
-        scene.frame.tick = 0;
-        CHECK_EQUAL(ALU, probe(&scene, 0, -50));
-        scene.frame.tick = GLINT_STEPS / 2;
-        CHECK_EQUAL(COVER_RED, probe(&scene, 0, -50));
+        for (size_t state = 0; state < sizeof STATES / sizeof STATES[0]; state++) {
+            NpTestScene scene = scene_of(layout, STATES[state]);
+            for (int groove = 0; groove < 4; groove++) {
+                CHECK_EQUAL(GROOVE, probe(&scene, 0, 33 + 7 * groove));
+                CHECK_EQUAL(VINYL, probe(&scene, 0, 36 + 7 * groove));
+            }
+            CHECK_EQUAL(ALU, probe(&scene, 0, -65));
+            CHECK_EQUAL(SHEEN, probe(&scene, 30, -30));
+            CHECK_EQUAL(SHEEN, probe(&scene, -30, 30));
+            CHECK_EQUAL(VINYL, probe(&scene, 30, 30));
+            CHECK_EQUAL(VINYL, probe(&scene, -30, -30));
+            scene.frame.tick = TURN_START + TURN_TICKS / 2;
+            CHECK_EQUAL(SHEEN, probe(&scene, 30, -30));
+            CHECK_EQUAL(VINYL, probe(&scene, 30, 30));
+        }
     }
 }
 
@@ -254,62 +285,63 @@ static void without_a_cover_the_label_is_red_with_a_cream_ring(void)
     }
 }
 
-static void without_a_cover_the_rim_and_three_grooves_ring_the_record(void)
+static void the_label_turns_clockwise_once_in_eighteen_ticks(void)
 {
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
-        NpTestScene scene = scene_of(layout, NP_TEST_NO_COVER);
-        CHECK_EQUAL(ALU, probe(&scene, 0, -65));
-        CHECK(probe(&scene, 32, 32) != VINYL);
-        CHECK(probe(&scene, 37, 37) != VINYL);
-        CHECK(probe(&scene, 42, 42) != VINYL);
-        CHECK_EQUAL(VINYL, probe(&scene, 34, 34));
-    }
-}
-
-static void the_glint_makes_one_turn_in_eighteen_ticks(void)
-{
-    for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
-        NpTestScene scene = scene_of(layout, NP_TEST_NO_COVER);
-        scene.frame.tick = 0;
-        CHECK_EQUAL(ALU, probe(&scene, 0, -50));
+        NpTestScene scene = quartered(scene_of(layout, NP_TEST_PLAYING));
+        scene.frame.tick = TURN_START;
+        CHECK_EQUAL(COVER_RED, probe(&scene, -10, -10));
+        CHECK_EQUAL(COVER_BLUE, probe(&scene, 10, -10));
+        CHECK_EQUAL(COVER_YELLOW, probe(&scene, 10, 10));
+        CHECK_EQUAL(COVER_GREEN, probe(&scene, -10, 10));
         np_test_draw(&scene, other);
-        scene.frame.tick = GLINT_STEPS / 2;
-        CHECK_EQUAL(ALU, probe(&scene, 0, 50));
-        CHECK_EQUAL(VINYL, probe(&scene, 0, -50));
-        scene.frame.tick = GLINT_STEPS;
+        scene.frame.tick = TURN_START + 4;
+        CHECK_EQUAL(COVER_RED, probe(&scene, 10, -10));
+        CHECK_EQUAL(COVER_BLUE, probe(&scene, 10, 10));
+        scene.frame.tick = TURN_START + TURN_TICKS / 2;
+        CHECK_EQUAL(COVER_GREEN, probe(&scene, 10, -10));
+        CHECK_EQUAL(COVER_BLUE, probe(&scene, -10, 10));
+        scene.frame.tick = TURN_START + TURN_TICKS;
         np_test_draw(&scene, pixels);
         CHECK(np_test_same(pixels, other, scene.layout));
     }
 }
 
-static void the_glint_turns_clockwise_from_the_top(void)
+static void the_red_labels_mark_turns_with_the_record(void)
 {
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
         NpTestScene scene = scene_of(layout, NP_TEST_NO_COVER);
-        scene.frame.tick = 5;
-        CHECK_EQUAL(VINYL, probe(&scene, -49, 9));
-        scene.frame.tick = GLINT_STEPS - 5;
-        CHECK_EQUAL(ALU, probe(&scene, -49, 9));
+        scene.frame.tick = TURN_START;
+        CHECK_EQUAL(CREAM, probe(&scene, 0, -14));
+        CHECK_EQUAL(LABEL_RED, probe(&scene, 0, 14));
+        np_test_draw(&scene, other);
+        scene.frame.tick = TURN_START + 4;
+        CHECK_EQUAL(CREAM, probe(&scene, 14, -3));
+        CHECK_EQUAL(LABEL_RED, probe(&scene, -14, -3));
+        scene.frame.tick = TURN_START + TURN_TICKS / 2;
+        CHECK_EQUAL(CREAM, probe(&scene, 0, 14));
+        CHECK_EQUAL(LABEL_RED, probe(&scene, 0, -14));
+        scene.frame.tick = TURN_START + TURN_TICKS;
+        np_test_draw(&scene, pixels);
+        CHECK(np_test_same(pixels, other, scene.layout));
     }
 }
 
-static void one_tick_repaints_only_the_glint_band(void)
+static void one_tick_repaints_only_the_label(void)
 {
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
-        for (uint32_t tick = TICK_BASE; tick < TICK_BASE + GLINT_STEPS; tick++) {
-            NpTestScene scene = scene_of(layout, NP_TEST_PLAYING);
-            scene.frame.tick = tick;
-            np_test_draw(&scene, other);
-            scene.frame.tick = tick + 1;
-            np_test_draw(&scene, pixels);
-            int rows = 0;
-            for (int y = 0; y < scene.layout.height; y++) {
-                bool differs = rows_differ(pixels, other, scene.layout, y);
-                rows += differs ? 1 : 0;
-                CHECK(!differs || (y >= centre_of(&scene).y - GLINT_REACH &&
-                                   y <= centre_of(&scene).y + GLINT_REACH));
+        for (int covered = 0; covered < 2; covered++) {
+            for (uint32_t tick = TICK_BASE; tick < TICK_BASE + TURN_TICKS; tick++) {
+                NpTestScene scene = covered != 0 ? quartered(scene_of(layout, NP_TEST_PLAYING))
+                                                 : scene_of(layout, NP_TEST_NO_COVER);
+                Rect label = label_box(&scene);
+                scene.frame.tick = tick;
+                np_test_draw(&scene, other);
+                scene.frame.tick = tick + 1;
+                np_test_draw(&scene, pixels);
+                CHECK(rect_differs(pixels, other, scene.layout, label));
+                CHECK(!differs_outside(pixels, other, scene.layout, label));
             }
-            CHECK(rows > 0 && rows <= GLINT_ROWS);
         }
     }
 }
@@ -373,14 +405,17 @@ static void the_arm_advances_monotonically_with_progress(void)
     }
 }
 
-static void scrubbing_swings_the_arm_to_the_target_but_the_glint_keeps_the_tick(void)
+static void scrubbing_swings_the_arm_to_the_target_but_the_label_keeps_the_tick(void)
 {
     for (int layout = 0; layout < NP_TEST_LAYOUT_COUNT; layout++) {
         NpTestScene scene = scene_of(layout, NP_TEST_SCRUBBING);
         CHECK(tube_at(&scene, 9));
         CHECK(!tube_at(&scene, 6));
-        scene.frame.tick = 0;
-        CHECK_EQUAL(ALU, probe(&scene, 0, -50));
+        scene.frame.cover = (Image){0};
+        scene.frame.tick = TURN_START;
+        CHECK_EQUAL(CREAM, probe(&scene, 0, -14));
+        scene.frame.tick = TURN_START + TURN_TICKS / 2;
+        CHECK_EQUAL(CREAM, probe(&scene, 0, 14));
     }
 }
 
@@ -534,19 +569,18 @@ int main(void)
 {
     static const TestCase cases[] = {
         TEST_CASE(the_backdrop_runs_from_walnut_top_to_walnut_bottom),
-        TEST_CASE(a_cover_fills_the_record_as_a_picture_disc),
-        TEST_CASE(a_picture_disc_has_no_grooves_but_the_glint_still_turns),
+        TEST_CASE(a_cover_fills_only_the_label),
+        TEST_CASE(the_vinyl_has_four_fine_grooves_and_a_sheen_that_stays_still),
         TEST_CASE(without_a_cover_the_label_is_red_with_a_cream_ring),
-        TEST_CASE(without_a_cover_the_rim_and_three_grooves_ring_the_record),
-        TEST_CASE(the_glint_makes_one_turn_in_eighteen_ticks),
-        TEST_CASE(the_glint_turns_clockwise_from_the_top),
-        TEST_CASE(one_tick_repaints_only_the_glint_band),
+        TEST_CASE(the_label_turns_clockwise_once_in_eighteen_ticks),
+        TEST_CASE(the_red_labels_mark_turns_with_the_record),
+        TEST_CASE(one_tick_repaints_only_the_label),
         TEST_CASE(the_lamp_is_amber_when_playing_and_dark_when_paused),
         TEST_CASE(a_playing_face_with_fitting_text_ignores_the_clock),
         TEST_CASE(the_stylus_sits_at_the_start_with_nothing_played_and_unknown_duration),
         TEST_CASE(the_stylus_reaches_the_last_groove_at_the_end),
         TEST_CASE(the_arm_advances_monotonically_with_progress),
-        TEST_CASE(scrubbing_swings_the_arm_to_the_target_but_the_glint_keeps_the_tick),
+        TEST_CASE(scrubbing_swings_the_arm_to_the_target_but_the_label_keeps_the_tick),
         TEST_CASE(volume_feedback_leaves_the_arm_where_playback_is),
         TEST_CASE(the_bar_is_cream_when_playing_amber_when_scrubbing_and_track_past_the_fill),
         TEST_CASE(the_volume_fills_the_bar_in_amber),

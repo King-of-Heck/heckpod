@@ -1,5 +1,8 @@
 const VINYL = #101018
 const ALU = #c8c8c0
+const GROOVE = #26262e
+const SHEEN = #2a2a34
+const SHEEN_SOFT = #1e1e28
 const ALU_DARK = #686860
 const CREAM = #f8ecd0
 const TAN = #d8b888
@@ -13,20 +16,23 @@ let qy = cy * 16 + 8
 gradient(x, y, width, height, #482c18, #281810)
 ring(qx, qy, 1072, 1024, ALU)
 ring(qx, qy, 1024, 0, VINYL)
+spoke(77, cy, 32, 192, 30, 61, SHEEN_SOFT)
+spoke(77, cy, 160, 192, 30, 61, SHEEN_SOFT)
+spoke(77, cy, 32, 80, 32, 59, SHEEN)
+spoke(77, cy, 160, 80, 32, 59, SHEEN)
+repeat groove from 0 to 4 {
+    let radius = 528 + 112 * groove
+    ring(qx, qy, radius + 16, radius, GROOVE)
+}
 
+let turn = ((tick >>> 1) % 9 * 2 + (tick & 1)) * 256 / 18
 if has_cover {
-    round_cover(77, cy, 64)
-    ring(qx, qy, 1072, 1024, ALU)
-    ring(qx, qy, 80, 0, VINYL)
+    spin_cover(77, cy, 28, turn)
 } else {
     ring(qx, qy, 448, 0, #b02420)
     ring(qx, qy, 368, 352, CREAM)
-    repeat groove from 0 to 3 {
-        let radius = 720 + 112 * groove
-        ring(qx, qy, radius + 16, radius, ALU_DARK)
-    }
+    spoke(77, cy, turn, 48, 7, 19, CREAM)
 }
-spoke(77, cy, ((tick >>> 1) % 9 * 2 + (tick & 1)) * 256 / 18, 32, 44, 58, ALU)
 ring(qx, qy, 48, 0, ALU)
 
 if badge != none {
