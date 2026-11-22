@@ -55,6 +55,7 @@ typedef struct FakeAudio {
     HalAudioOutput output;
     EqualizerCurve equalizer;
     int equalizer_changes;
+    uint16_t speed_q8;
     int refused_plays;
     HalAudioJack jack;
     HalAudioRefusal refusal;
@@ -178,6 +179,7 @@ void fake_hal_reset(void)
     fake = (FakeHal){0};
     memset(theme_memory, 0, sizeof theme_memory);
     fake.audio.jack = HAL_AUDIO_JACK_SINGLE_ENDED;
+    fake.audio.speed_q8 = 256;
     fake.audio.status.idle = true;
     hal_system_set_power_savings(HAL_SAVINGS_DEFAULT);
 }
@@ -675,6 +677,16 @@ void hal_audio_set_equalizer(const EqualizerCurve *curve)
 EqualizerCurve fake_hal_equalizer(void)
 {
     return fake.audio.equalizer;
+}
+
+void hal_audio_set_speed(uint16_t speed_q8)
+{
+    fake.audio.speed_q8 = speed_q8;
+}
+
+int fake_hal_audio_speed(void)
+{
+    return fake.audio.speed_q8;
 }
 
 int fake_hal_equalizer_changes(void)

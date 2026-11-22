@@ -23,7 +23,7 @@
 
 enum {
     RING_BLOCKS = 7,
-    BLOCK_WORDS = 4000,
+    BLOCK_WORDS = 3700,
     RING_WORDS = RING_BLOCKS * BLOCK_WORDS,
     WORDS_PER_FRAME = 2,
     RING_FRAMES = RING_WORDS / WORDS_PER_FRAME,
@@ -80,6 +80,8 @@ static union {
     WavBuffers wav;
 } decoding __attribute__((section(".high_ram")));
 static uint32_t music_ring[RING_WORDS];
+static uint8_t stretch_memory[TIME_STRETCH_MEMORY_BYTES] __attribute__((aligned(4)));
+static uint16_t speed_setting = 256;
 static WavSource wav_source;
 static SourceKind source_kind;
 static bool unknown_format;
@@ -374,9 +376,13 @@ static void ensure_engine(void)
     core1_source_set_wake(&core1_source, signal_core1);
     wav_source_init(&wav_source, files, &decoding.wav);
     AudioSource source = {open_chosen, next_chosen, release_chosen, close_chosen, NULL};
-    audio_engine_init(
-        &engine, (AudioEngineConfig){.source = source, .ring = ring(), .ring_words = RING_WORDS});
+    audio_engine_init(&engine, (AudioEngineConfig){.source = source,
+                                                   .ring = ring(),
+                                                   .ring_words = RING_WORDS,
+                                                   .stretch_memory = stretch_memory,
+                                                   .stretch_bytes = sizeof stretch_memory});
     audio_engine_set_equalizer(&engine, &equalizer_curve);
+    audio_engine_set_speed(&engine, speed_setting);
     engine_ready = true;
 }
 
@@ -780,6 +786,14 @@ void hal_audio_set_output(HalAudioOutput output)
 {
     output_setting = output;
     apply_volume();
+}
+
+void hal_audio_set_speed(uint16_t speed_q8)
+{
+    speed_setting = speed_q8;
+    if (engine_ready) {
+        audio_engine_set_speed(&engine, speed_q8);
+    }
 }
 
 void hal_audio_set_equalizer(const EqualizerCurve *curve)

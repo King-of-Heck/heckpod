@@ -136,6 +136,7 @@ void hal_audio_set_balance(uint8_t balance);
 void hal_audio_set_output(HalAudioOutput output);
 void hal_audio_set_bluetooth_level(HalAudioBluetoothLevel level);
 void hal_audio_set_equalizer(const EqualizerCurve *curve);
+void hal_audio_set_speed(uint16_t speed_q8);
 void hal_audio_allow_slow_clock(bool allowed);
 HalAudioStatus hal_audio_status(void);
 HalAudioStats hal_audio_stats(void);

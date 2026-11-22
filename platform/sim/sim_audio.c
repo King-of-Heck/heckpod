@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <math.h>
 
+#include "dsp/time_stretch.h"
 #include "hal/audio.h"
 #include "sim_decoder.h"
 #include "sim_storage.h"
@@ -40,11 +41,16 @@ typedef struct SimAudio {
     HalAudioGain analog_gain;
     HalAudioOutput output;
     Equalizer equalizer;
+    TimeStretch stretch;
+    uint16_t speed_q8;
+    bool stretching;
 } SimAudio;
 
 static SimAudio audio;
 static float chunk[CHUNK_FRAMES * STEREO];
 static int32_t fixed_chunk[CHUNK_FRAMES * STEREO];
+static int32_t stretched_chunk[TIME_STRETCH_CHUNK * STEREO];
+static uint8_t stretch_memory[TIME_STRETCH_MEMORY_BYTES] __attribute__((aligned(4)));
 
 static void lock(void)
 {
@@ -107,6 +113,17 @@ static void clear_stream(void)
     }
 }
 
+static void restart_stretch(void)
+{
+    audio.stretching = audio.speed_q8 != TIME_STRETCH_UNITY && audio.stream_rate > 0 &&
+                       audio.stream_rate <= TIME_STRETCH_MAX_RATE &&
+                       time_stretch_init(&audio.stretch, stretch_memory, sizeof stretch_memory,
+                                         audio.stream_rate);
+    if (audio.stretching) {
+        time_stretch_set_speed(&audio.stretch, audio.speed_q8);
+    }
+}
+
 static bool switch_to_next(void)
 {
     close_track(current_track());
@@ -116,6 +133,7 @@ static bool switch_to_next(void)
     }
     audio.current = 1 - audio.current;
     use_stream_rate(current_track()->decoder.sample_rate);
+    restart_stretch();
     return true;
 }
 
@@ -142,6 +160,29 @@ static void equalize_chunk(uint64_t frames, uint32_t rate)
     }
 }
 
+static void stretch_chunk(uint64_t frames)
+{
+    float output[TIME_STRETCH_CHUNK * STEREO];
+    for (uint64_t sample = 0; sample < frames * STEREO; sample++) {
+        fixed_chunk[sample] = to_fixed(chunk[sample]);
+    }
+    uint32_t pushed = 0;
+    while (pushed < frames) {
+        uint32_t count = (uint32_t)frames - pushed;
+        count = count < TIME_STRETCH_CHUNK ? count : TIME_STRETCH_CHUNK;
+        time_stretch_push(&audio.stretch, fixed_chunk + (size_t)pushed * STEREO, count);
+        pushed += count;
+        uint32_t made;
+        while ((made = time_stretch_pull(&audio.stretch, stretched_chunk, TIME_STRETCH_CHUNK)) >
+               0) {
+            for (uint32_t sample = 0; sample < made * STEREO; sample++) {
+                output[sample] = (float)stretched_chunk[sample] / SAMPLE_SCALE * audio.gain;
+            }
+            SDL_AudioStreamPut(audio.stream, output, (int)(made * BYTES_PER_FRAME));
+        }
+    }
+}
+
 static bool decode_chunk(void)
 {
     SimTrack *track = current_track();
@@ -153,6 +194,10 @@ static bool decode_chunk(void)
         return switch_to_next();
     }
     equalize_chunk(frames, track->decoder.sample_rate);
+    if (audio.stretching) {
+        stretch_chunk(frames);
+        return true;
+    }
     for (uint64_t sample = 0; sample < frames * STEREO; sample++) {
         chunk[sample] *= audio.gain;
     }
@@ -211,6 +256,7 @@ bool sim_audio_start(bool virtual_output)
     SDL_memset(&audio, 0, sizeof audio);
     audio.virtual_output = virtual_output;
     audio.gain = 1.0f;
+    audio.speed_q8 = TIME_STRETCH_UNITY;
     audio.state = HAL_AUDIO_STOPPED;
     if (virtual_output) {
         return true;
@@ -259,6 +305,7 @@ bool hal_audio_play(const char *path, uint32_t start_ms, uint32_t token)
         sim_decoder_seek(decoder, frames_for(start_ms, decoder->sample_rate));
         use_stream_rate(decoder->sample_rate);
         clear_stream();
+        restart_stretch();
     }
     audio.state = opened ? HAL_AUDIO_PLAYING : HAL_AUDIO_STOPPED;
     audio.failed = !opened;
@@ -301,6 +348,7 @@ void hal_audio_seek(uint32_t position_ms)
     if (track->open) {
         sim_decoder_seek(&track->decoder, frames_for(position_ms, track->decoder.sample_rate));
         clear_stream();
+        restart_stretch();
     }
     unlock();
 }
@@ -328,6 +376,14 @@ void hal_audio_set_filter(uint8_t filter)
 void hal_audio_set_balance(uint8_t balance)
 {
     (void)balance;
+}
+
+void hal_audio_set_speed(uint16_t speed_q8)
+{
+    lock();
+    audio.speed_q8 = speed_q8;
+    restart_stretch();
+    unlock();
 }
 
 void hal_audio_set_equalizer(const EqualizerCurve *curve)
