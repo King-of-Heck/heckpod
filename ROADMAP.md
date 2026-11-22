@@ -50,7 +50,7 @@ Version 0.13.0, an experimental pre-release, adds theme files, a theme editor in
 | Browse while covers are built | todo |
 | echo-sync on a Mac and on Linux with a real card | todo |
 | Firmware images in GitHub releases | todo |
-| Playback speed for audiobooks and podcasts | todo |
+| Playback speed for audiobooks and podcasts | done in HeckPod (not yet checked on a player) |
 | Installing from a Mac through FiiO's updater | todo |
 | Testing on more players | todo |
 
