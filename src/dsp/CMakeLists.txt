@@ -1,4 +1,4 @@
-set(ECHO_DSP_SOURCES equalizer.c equalizer_design.c)
+set(ECHO_DSP_SOURCES equalizer.c equalizer_design.c time_stretch.c)
 add_library(echo_dsp STATIC ${ECHO_DSP_SOURCES})
 target_include_directories(echo_dsp PUBLIC include)
 target_link_libraries(echo_dsp PRIVATE echo_options)
