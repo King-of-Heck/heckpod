@@ -640,6 +640,31 @@ static void a_theme_past_the_last_one_rejects_the_file(void)
     CHECK(!settings_decode(bytes, sizeof bytes, &settings));
 }
 
+static void playback_speed_defaults_to_normal_and_maps_to_q8(void)
+{
+    Settings settings = settings_defaults();
+    CHECK_EQUAL(PLAYBACK_SPEED_1X, settings.options[OPTION_PLAYBACK_SPEED]);
+    CHECK_EQUAL(PLAYBACK_SPEED_COUNT, settings_option_count(OPTION_PLAYBACK_SPEED));
+    CHECK_EQUAL(256, settings_playback_speed_q8(PLAYBACK_SPEED_1X));
+    CHECK_EQUAL(320, settings_playback_speed_q8(PLAYBACK_SPEED_1_25X));
+    CHECK_EQUAL(384, settings_playback_speed_q8(PLAYBACK_SPEED_1_5X));
+    CHECK_EQUAL(448, settings_playback_speed_q8(PLAYBACK_SPEED_1_75X));
+    CHECK_EQUAL(512, settings_playback_speed_q8(PLAYBACK_SPEED_2X));
+    CHECK_EQUAL(192, settings_playback_speed_q8(PLAYBACK_SPEED_0_75X));
+    CHECK_EQUAL(256, settings_playback_speed_q8(PLAYBACK_SPEED_COUNT));
+}
+
+static void playback_speed_survives_a_round_trip(void)
+{
+    Settings chosen = settings_defaults();
+    chosen.options[OPTION_PLAYBACK_SPEED] = PLAYBACK_SPEED_1_5X;
+    uint8_t bytes[SETTINGS_FILE_SIZE];
+    settings_encode(&chosen, bytes);
+    Settings read;
+    CHECK(settings_decode(bytes, sizeof bytes, &read));
+    CHECK_EQUAL(PLAYBACK_SPEED_1_5X, read.options[OPTION_PLAYBACK_SPEED]);
+}
+
 int main(void)
 {
     static const TestCase cases[] = {
@@ -684,6 +709,8 @@ int main(void)
         TEST_CASE(the_filter_and_balance_share_byte_nineteen),
         TEST_CASE(a_version_six_file_loads_with_the_first_filter_and_centred_balance),
         TEST_CASE(an_unknown_filter_or_balance_is_rejected),
+        TEST_CASE(playback_speed_defaults_to_normal_and_maps_to_q8),
+        TEST_CASE(playback_speed_survives_a_round_trip),
     };
     return test_run_all(cases, TEST_CASE_COUNT(cases));
 }

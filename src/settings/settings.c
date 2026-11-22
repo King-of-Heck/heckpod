@@ -74,7 +74,10 @@ static const uint8_t OPTION_COUNTS[SETTINGS_OPTION_COUNT] = {
     [OPTION_RETIRED_INTERNAL_STORAGE] = 2,
     [OPTION_STATUS_BAR] = 2,
     [OPTION_POWER_ON] = 2,
-    [OPTION_NOW_PLAYING_FACE] = NP_FACE_OPTION_SLOTS};
+    [OPTION_NOW_PLAYING_FACE] = NP_FACE_OPTION_SLOTS,
+    [OPTION_PLAYBACK_SPEED] = PLAYBACK_SPEED_COUNT};
+
+static const uint16_t PLAYBACK_SPEED_Q8[PLAYBACK_SPEED_COUNT] = {256, 320, 384, 448, 512, 192};
 
 _Static_assert(OPTIONS_FIELD + SETTINGS_OPTION_COUNT <= CHECKSUM_FIELD,
                "the options must fit the file");
@@ -136,6 +139,11 @@ uint32_t settings_animation_ms(const uint8_t *options, uint32_t normal_ms)
 uint8_t settings_option_count(SettingOption option)
 {
     return option < SETTINGS_OPTION_COUNT ? OPTION_COUNTS[option] : 0;
+}
+
+uint16_t settings_playback_speed_q8(uint8_t option)
+{
+    return option < PLAYBACK_SPEED_COUNT ? PLAYBACK_SPEED_Q8[option] : 256;
 }
 
 static int checksum_field_of(uint8_t version)

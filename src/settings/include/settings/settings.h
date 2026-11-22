@@ -85,6 +85,7 @@ typedef enum SettingOption {
     OPTION_STATUS_BAR,
     OPTION_POWER_ON,
     OPTION_NOW_PLAYING_FACE,
+    OPTION_PLAYBACK_SPEED,
     SETTINGS_OPTION_COUNT
 } SettingOption;
 
@@ -158,6 +159,16 @@ enum {
 };
 
 enum {
+    PLAYBACK_SPEED_1X,
+    PLAYBACK_SPEED_1_25X,
+    PLAYBACK_SPEED_1_5X,
+    PLAYBACK_SPEED_1_75X,
+    PLAYBACK_SPEED_2X,
+    PLAYBACK_SPEED_0_75X,
+    PLAYBACK_SPEED_COUNT
+};
+
+enum {
     STATUS_BAR_STANDARD,
     STATUS_BAR_LARGE
 };
@@ -226,6 +237,7 @@ uint32_t settings_screen_timeout_ms(const Settings *settings);
 uint32_t settings_auto_off_option_minutes(int option);
 uint32_t settings_auto_off_ms(const Settings *settings);
 uint8_t settings_option_count(SettingOption option);
+uint16_t settings_playback_speed_q8(uint8_t option);
 uint32_t settings_animation_ms(const uint8_t *options, uint32_t normal_ms);
 void settings_encode(const Settings *settings, uint8_t *bytes);
 bool settings_decode(const uint8_t *bytes, uint32_t length, Settings *settings);
