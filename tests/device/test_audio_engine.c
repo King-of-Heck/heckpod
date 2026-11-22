@@ -85,6 +85,7 @@ typedef struct ScriptedSource {
     int32_t right[16];
     int waits_before_frame;
     int frames_left;
+    int frames_next;
     int releases;
     int closes;
     uint32_t rate;
@@ -97,7 +98,11 @@ static bool scripted_open(void *context, const char *path, uint32_t start_ms, Au
 {
     (void)path;
     (void)start_ms;
-    const ScriptedSource *source_state = context;
+    ScriptedSource *source_state = context;
+    if (source_state->frames_next > 0) {
+        source_state->frames_left = source_state->frames_next;
+        source_state->frames_next = 0;
+    }
     uint32_t rate = source_state->rate == 0 ? 44100 : source_state->rate;
     *track = (AudioTrackInfo){
         .stream = {.sample_rate = rate, .channels = 2, .bits_per_sample = 16, .max_block = 16}};
@@ -678,9 +683,229 @@ static void a_frame_is_released_once_its_samples_are_in_the_ring(void)
     CHECK_EQUAL(1, scripted.closes);
 }
 
+enum {
+    STRETCH_RATE = 48000,
+    STRETCH_BLOCKS = 3000,
+    STRETCH_FRAMES = 16 * STRETCH_BLOCKS,
+    DOUBLE_SPEED = 512,
+    STEP_FRAMES = 16
+};
+
+static int32_t stretch_memory[TIME_STRETCH_MEMORY_BYTES / sizeof(int32_t)];
+static uint32_t plain_ring[RING_WORDS];
+
+static void give_stretch_memory(void)
+{
+    AudioEngineConfig config = engine.config;
+    config.stretch_memory = stretch_memory;
+    config.stretch_bytes = sizeof stretch_memory;
+    audio_engine_init(&engine, config);
+    audio_engine_set_volume(&engine, FULL_VOLUME);
+}
+
+static void start_stretchable(uint32_t rate, int blocks, uint16_t speed_q8)
+{
+    start_scripted_engine(0, blocks);
+    scripted.rate = rate;
+    give_stretch_memory();
+    audio_engine_set_speed(&engine, speed_q8);
+}
+
+static bool near(uint32_t value, uint32_t target, uint32_t tolerance)
+{
+    return value + tolerance >= target && value <= target + tolerance;
+}
+
+static uint32_t consume_to(uint32_t consumed, uint32_t target)
+{
+    for (int round = 0; round < 200000 && consumed < target; round++) {
+        audio_engine_pump(&engine, consumed);
+        uint32_t step = audio_engine_buffered(&engine, consumed);
+        step = step < STEP_FRAMES ? step : STEP_FRAMES;
+        consumed += step < target - consumed ? step : target - consumed;
+    }
+    audio_engine_observe(&engine, consumed);
+    return consumed;
+}
+
+static void pump_then_observe(uint32_t consumed)
+{
+    audio_engine_pump(&engine, consumed);
+    audio_engine_observe(&engine, consumed);
+}
+
+static uint32_t frames_until_stopped(void)
+{
+    uint32_t consumed = 0;
+    for (int round = 0; round < 400000; round++) {
+        pump_then_observe(consumed);
+        if (audio_engine_status(&engine).state == AUDIO_ENGINE_STOPPED) {
+            return consumed;
+        }
+        uint32_t step = audio_engine_buffered(&engine, consumed);
+        consumed += step < STEP_FRAMES ? step : STEP_FRAMES;
+    }
+    return UINT32_MAX;
+}
+
+static void speed_one_is_bit_identical(void)
+{
+    start_engine();
+    use_a_cut_at_one_kilohertz();
+    CHECK(audio_engine_play(&engine, "lpc_16_44k_stereo", 0, 7));
+    pump_until_full(0);
+    memcpy(plain_ring, ring, sizeof ring);
+    start_engine();
+    give_stretch_memory();
+    use_a_cut_at_one_kilohertz();
+    audio_engine_set_speed(&engine, DOUBLE_SPEED);
+    audio_engine_set_speed(&engine, TIME_STRETCH_UNITY);
+    CHECK(audio_engine_play(&engine, "lpc_16_44k_stereo", 0, 7));
+    pump_until_full(0);
+    CHECK(memcmp(plain_ring, ring, sizeof ring) == 0);
+}
+
+static void double_speed_halves_the_output(void)
+{
+    start_stretchable(STRETCH_RATE, STRETCH_BLOCKS, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    uint32_t frames = frames_until_stopped();
+    CHECK(near(frames, STRETCH_FRAMES / 2, 2000));
+    CHECK(!audio_engine_status(&engine).failed);
+}
+
+static void position_tracks_the_source_at_speed(void)
+{
+    start_stretchable(STRETCH_RATE, STRETCH_BLOCKS, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    uint32_t consumed = consume_to(0, 9600);
+    CHECK_EQUAL(9600u, consumed);
+    CHECK(near(audio_engine_status(&engine).position_ms, 9600 * 2 * 1000 / STRETCH_RATE, 40));
+}
+
+static void speed_change_keeps_position_continuous(void)
+{
+    start_stretchable(STRETCH_RATE, 2 * STRETCH_BLOCKS, TIME_STRETCH_UNITY);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    uint32_t consumed = consume_to(0, 4800);
+    uint32_t before = audio_engine_status(&engine).position_ms;
+    CHECK_EQUAL(100u, before);
+    audio_engine_set_speed(&engine, DOUBLE_SPEED);
+    CHECK(near(audio_engine_status(&engine).position_ms, before, 1));
+    uint32_t switched = consumed + audio_engine_buffered(&engine, consumed);
+    consumed = consume_to(consumed, switched);
+    uint32_t at_switch = audio_engine_status(&engine).position_ms;
+    CHECK(near(at_switch, switched * 1000 / STRETCH_RATE, 1));
+    consume_to(consumed, switched + 4800);
+    CHECK(near(audio_engine_status(&engine).position_ms, at_switch + 200, 1));
+}
+
+static void no_memory_means_normal_speed(void)
+{
+    start_scripted_engine(0, STRETCH_BLOCKS);
+    scripted.rate = STRETCH_RATE;
+    audio_engine_set_speed(&engine, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    consume_to(0, 4800);
+    CHECK_EQUAL(100u, audio_engine_status(&engine).position_ms);
+    start_scripted_engine(0, STRETCH_BLOCKS);
+    scripted.rate = STRETCH_RATE;
+    audio_engine_set_speed(&engine, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    CHECK_EQUAL(STRETCH_FRAMES, frames_until_stopped());
+}
+
+static void high_rates_stay_normal(void)
+{
+    start_stretchable(96000, STRETCH_BLOCKS, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    consume_to(0, 9600);
+    CHECK_EQUAL(100u, audio_engine_status(&engine).position_ms);
+    start_stretchable(96000, STRETCH_BLOCKS, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    CHECK_EQUAL(STRETCH_FRAMES, frames_until_stopped());
+}
+
+static bool hands_over_and_stops(uint16_t speed_q8)
+{
+    start_stretchable(STRETCH_RATE, STRETCH_BLOCKS / 2, speed_q8);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 3));
+    scripted.frames_next = STRETCH_BLOCKS / 2;
+    audio_engine_queue_next(&engine, "scripted", 4);
+    bool handed_over = false;
+    uint32_t consumed = 0;
+    for (int round = 0; round < 400000; round++) {
+        pump_then_observe(consumed);
+        AudioEngineStatus status = audio_engine_status(&engine);
+        handed_over = handed_over || status.token == 4;
+        if (status.state == AUDIO_ENGINE_STOPPED) {
+            return handed_over && status.token == 4 && !status.failed &&
+                   near(consumed, STRETCH_FRAMES * TIME_STRETCH_UNITY / speed_q8, 2000);
+        }
+        uint32_t step = audio_engine_buffered(&engine, consumed);
+        consumed += step < STEP_FRAMES ? step : STEP_FRAMES;
+    }
+    return false;
+}
+
+static void a_stretched_track_ends_and_hands_over_like_a_normal_one(void)
+{
+    CHECK(hands_over_and_stops(TIME_STRETCH_UNITY));
+    CHECK(hands_over_and_stops(DOUBLE_SPEED));
+}
+
+static void seeking_while_stretched_keeps_the_speed(void)
+{
+    start_stretchable(STRETCH_RATE, 2 * STRETCH_BLOCKS, DOUBLE_SPEED);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    consume_to(0, 4800);
+    CHECK(audio_engine_seek(&engine, 300));
+    CHECK_EQUAL(300u, audio_engine_status(&engine).position_ms);
+    consume_to(0, 4800);
+    CHECK_EQUAL(500u, audio_engine_status(&engine).position_ms);
+}
+
+static void a_seek_after_a_speed_change_queues_nothing(void)
+{
+    start_stretchable(STRETCH_RATE, STRETCH_BLOCKS, TIME_STRETCH_UNITY);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    consume_to(0, 4800);
+    audio_engine_set_speed(&engine, DOUBLE_SPEED);
+    CHECK(audio_engine_seek(&engine, 0));
+    CHECK(!audio_engine_next_pending(&engine));
+    CHECK_EQUAL(1u, audio_engine_status(&engine).token);
+}
+
+static void speed_changes_beyond_the_segment_array_keep_the_newest_speed(void)
+{
+    start_stretchable(STRETCH_RATE, 2 * STRETCH_BLOCKS, TIME_STRETCH_UNITY);
+    CHECK(audio_engine_play(&engine, "scripted", 0, 1));
+    uint32_t consumed = 0;
+    static const uint16_t SPEEDS[] = {320, 384, 448, DOUBLE_SPEED};
+    for (size_t index = 0; index < sizeof SPEEDS / sizeof SPEEDS[0]; index++) {
+        consumed = consume_to(consumed, consumed + 160);
+        audio_engine_set_speed(&engine, SPEEDS[index]);
+    }
+    uint32_t switched = consumed + audio_engine_buffered(&engine, consumed);
+    consumed = consume_to(consumed, switched);
+    uint32_t at_switch = audio_engine_status(&engine).position_ms;
+    consume_to(consumed, switched + 4800);
+    CHECK(near(audio_engine_status(&engine).position_ms, at_switch + 200, 1));
+}
+
 int main(void)
 {
     static const TestCase cases[] = {
+        TEST_CASE(speed_one_is_bit_identical),
+        TEST_CASE(double_speed_halves_the_output),
+        TEST_CASE(position_tracks_the_source_at_speed),
+        TEST_CASE(speed_change_keeps_position_continuous),
+        TEST_CASE(no_memory_means_normal_speed),
+        TEST_CASE(high_rates_stay_normal),
+        TEST_CASE(a_stretched_track_ends_and_hands_over_like_a_normal_one),
+        TEST_CASE(seeking_while_stretched_keeps_the_speed),
+        TEST_CASE(a_seek_after_a_speed_change_queues_nothing),
+        TEST_CASE(speed_changes_beyond_the_segment_array_keep_the_newest_speed),
         TEST_CASE(the_current_path_is_the_track_being_played),
         TEST_CASE(a_source_that_is_not_ready_leaves_the_ring_alone),
         TEST_CASE(a_frame_is_released_once_its_samples_are_in_the_ring),
