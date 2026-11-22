@@ -254,7 +254,7 @@ In the editor, show Now Playing, open **Now Playing layout → Places**, and dra
 
 ### `[now_playing_scene]`
 
-A scene draws the whole Now Playing screen, below the header, from a short script: shapes, text, the cover and the progress, moving with the music. The built-in Cassette, VU meters, Turntable and LCD deck themes are made this way; their scripts are in `assets/themes`.
+A scene draws the whole Now Playing screen, below the header, from a short script: shapes, text, the cover and the progress, moving with the music. The player's Now Playing faces (Cassette, VU meters, Turntable and LCD deck) are made this way, kept as built-in themes for their scenes; their scripts are in `assets/themes`. On the player a face chosen under Settings → Display → Now Playing takes the place of a theme's own scene; Standard shows the theme's.
 
 ```toml
 [now_playing_scene]

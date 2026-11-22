@@ -32,7 +32,7 @@ Version 0.13.0, an experimental pre-release, adds theme files, a theme editor in
 | USB mass storage | device | Internal storage and the SD card, read/write, at high speed; SD card reads at about 3.9 MB/s |
 | USB DAC mode | device | Settings → USB mode → DAC: a USB Audio Class 1.0 sound card, 16 or 24-bit at 44.1 or 48 kHz, with its own remembered volume; played on the player from Windows 11 (all four formats) and an Android phone |
 | Updates and the way back to FiiO | device | EchoPod installs its own updates and FiiO's 8 GB firmware from a file copy |
-| Themes | device | Settings → Display → Theme: Dark, Light, Fjord, Dusk, Neon, Phosphor, Paper, Olive and High contrast, and four that redraw Now Playing in landscape and portrait: Cassette, VU meters, Turntable (a picture disc of the cover) and LCD deck |
+| Themes | device | Settings → Display → Theme: Dark, Light, Fjord, Dusk, Neon, Phosphor, Paper, Olive and High contrast; Settings → Display → Now Playing adds four faces for any theme, in landscape and portrait: Cassette, VU meters, Turntable (a picture disc of the cover) and LCD deck |
 | Theme files | device | Up to 8 `.echotheme` files in `/Themes` on the card: colours, shapes, spacing, accents, icons, wallpapers and fonts, and Home and Now Playing drawn by the theme. Made in the theme editor at https://basilskywalk.github.io/echopod/. Experimental: tried on one player |
 | `.m4b` audiobooks with chapters | device | "Chapter N of M" on Now Playing, a chapter list on ≡, the chapter kept in a one-file book's bookmark; no chapter titles yet |
 | QOA playback | device | Mono and stereo, exact seeking, gapless; names from the path, since QOA has no tags |
