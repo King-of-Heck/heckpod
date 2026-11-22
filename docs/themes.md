@@ -269,7 +269,7 @@ header_text = "#eef1fa"
 - `file` names a script beside the source (or `script` holds it in the source, as a multi-line string).
 - `chrome` is optional: the colours the header and status bar take while the scene shows. Any colour it leaves out is the theme's own.
 - On the player, wearing the theme shows its scene on Now Playing; a theme without one shows the standard Now Playing in its colours.
-- A scene takes at most 6,144 bytes once packed, and a theme with a Home scene too shares those 6,144 bytes between them. The packer and the editor say when it's too big, and where a script has a mistake.
+- A scene takes at most 6,144 bytes once packed, and a theme with a Home scene too shares those 6,144 bytes between them. The packer and the editor say when it's too big, and where a script has a mistake. In HeckPod, a Now Playing face chosen in Settings shares that room with the theme's Home scene: beside Cassette, the largest face, a Home scene can take about 3,500 bytes. A Home scene too big for that shows the standard Home and the standard Now Playing while the face is chosen.
 
 ### `[home_scene]`
 

@@ -51,7 +51,7 @@ EchoPod is early firmware made by one person and tested on one player. It comes 
 - **The VU needles and the LCD spectrum are decorative.** The player has no audio-level data, so they move in a fixed pattern that doesn't follow the music.
 - **VU meters in landscape leave out the album, the format and the modes row.** Portrait shows them.
 - **Standard shows if the face code can't be loaded.** The faces are read from internal storage when first needed. If that fails (internal storage doesn't answer, or the copy is damaged twice), Now Playing draws Standard and keeps doing so until you restart the player.
-- **Going back to EchoPod 0.13.0 turns a chosen Now Playing face into its theme**, because 0.13.0 has no Now Playing setting, so the menus take that face's colours there. Going back to 0.12.0 or earlier keeps the face and the theme.
+- **Going back to EchoPod 0.13.0 turns a chosen Now Playing face into its theme**, because 0.13.0 has no Now Playing setting, so the menus take that face's colours there. Coming back to HeckPod afterwards gives Dark with that face, so choose the theme again. Going back to 0.12.0 or earlier keeps the face and the theme.
 - **The faces' region is full:** after the faces' code and a theme's largest scene it has 20 of 13,824 bytes free, and the faces' code can grow by about 290 bytes before it needs another 512-byte sector that isn't there. More scene functions need a smaller scene limit or a bigger region. The main code window has 124 bytes free in the developer build and 1,664 in the release build. `.high_ram` keeps 31,140 bytes free (44,964 before the faces).
 - **"Standard" isn't translated** in any language; the Portrait status bar setting shares the word. The LCD deck's legends stay English on purpose.
 
