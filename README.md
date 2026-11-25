@@ -15,7 +15,7 @@ A personal build of [EchoPod](https://github.com/BasilSkyWalk/echopod) by BasilS
 
 Firmware images are on the [Releases](https://github.com/King-of-Heck/heckpod/releases) page, each with its SHA-256 and install steps:
 
-- **HeckPod 0.13.0-h1** (experimental): this branch, based on EchoPod 0.13.0.
+- **HeckPod 0.13.0-h1** (latest): this branch, based on EchoPod 0.13.0.
 - **HeckPod 0.12.0-h1:** EchoPod 0.12.0 with the start-up screen only.
 
 Installing is the same as for EchoPod: copy `HIFIEC90.IMG` to the player's internal storage and restart it (`docs/user-guide.md`, Install).
