@@ -1,8 +1,38 @@
-# EchoPod
+# HeckPod
 
-> **HeckPod** is a personal build of [EchoPod](https://github.com/BasilSkyWalk/echopod) by BasilSkyWalk, with a custom start-up screen. All credit for EchoPod goes to its author. GPL-3.0, like EchoPod.
+A personal build of [EchoPod](https://github.com/BasilSkyWalk/echopod) by BasilSkyWalk, the replacement firmware for the Snowsky (FiiO) Echo Mini 8 GB music player. All credit for EchoPod goes to its author; HeckPod adds a few things on top. Neither is made or supported by FiiO.
 
-Replacement firmware for the Snowsky (FiiO) Echo Mini 8 GB music player. It has an iPod-style Cover Flow browser, a music library built on the player, album favorites, M3U playlists and an Up Next queue. It isn't made or supported by FiiO.
+> **Tested on one Echo Mini 8 GB only.** Read `docs/known-issues.md` before installing. A failed install can leave the player needing maskrom recovery from a computer (`docs/device-recovery.md`).
+
+## What HeckPod adds
+
+- **Playback speed for audiobooks and podcasts:** Settings → Sound → Playback speed, from 0.75x to 2x without changing the pitch of voices. Music always plays at normal speed.
+- **Now Playing faces that work with any theme:** Settings → Display → Now Playing picks Standard, Cassette, VU meters, Turntable or LCD deck separately from the theme. (EchoPod 0.13.0 made the faces themes of their own.)
+- **A Turntable that spins the album art:** the album cover sits on the record's centre label and turns at 33⅓ rpm while a track plays.
+- **A HeckPod start-up screen and Home title.**
+
+## Download and install
+
+Firmware images are on the [Releases](https://github.com/King-of-Heck/heckpod/releases) page, each with its SHA-256 and install steps:
+
+- **HeckPod 0.13.0-h1** (experimental): this branch, based on EchoPod 0.13.0.
+- **HeckPod 0.12.0-h1:** EchoPod 0.12.0 with the start-up screen only.
+
+Installing is the same as for EchoPod: copy `HIFIEC90.IMG` to the player's internal storage and restart it (`docs/user-guide.md`, Install).
+
+To manage a music library on a computer and sync it to the player's card, see [HeckTunes](https://github.com/King-of-Heck/hecktunes).
+
+## Branches
+
+- **`heckpod-0.13`** (default): EchoPod 0.13.0 with everything above.
+- **`heckpod-splash`:** EchoPod 0.12.0 with the start-up screen.
+- **`main`:** EchoPod as published upstream.
+
+Please report problems with HeckPod's additions in this repository's [issues](https://github.com/King-of-Heck/heckpod/issues), not to EchoPod. HeckPod is built and tested the same way as EchoPod; the rest of this README is EchoPod's.
+
+## About EchoPod
+
+EchoPod has an iPod-style Cover Flow browser, a music library built on the player, album favorites, M3U playlists and an Up Next queue.
 
 - **Installing and using it:** `docs/user-guide.md`.
 - **Read first:** `docs/known-issues.md`. EchoPod is early, and has been tested on one player.
@@ -21,7 +51,7 @@ The hardware knowledge it relies on comes largely from the [ReChord](https://git
 - **Themes:** nine built in, and four Now Playing faces (Cassette, VU meters, Turntable and LCD deck) that work with any theme, chosen under Settings → Display → Now Playing (a HeckPod addition). From 0.13.0, a theme file on the card changes the colours, shapes, fonts and wallpaper, and can draw Home and Now Playing itself. Make one in the [theme editor](https://basilskywalk.github.io/echopod/).
 - **Portrait mode:** Settings → Orientation turns the screen upright either way, with layouts made for it. The volume rocker turns with it.
 - **Languages:** Settings → Language: English, Simplified Chinese, Japanese, Korean, German, French, Spanish, Italian, Portuguese, Dutch, Swedish, Danish, Norwegian, Finnish, Russian, Ukrainian, Polish and Indonesian. The choice applies after a restart. Titles and artists in Cyrillic, Greek, Polish, Czech, Turkish, Romanian and Vietnamese letters draw too.
-- **Audiobooks and podcasts** on their own shelves, with a bookmark for each.
+- **Audiobooks and podcasts** on their own shelves, with a bookmark for each, and playback speed (a HeckPod addition).
 - **Bluetooth headphones:** pairing, up to six remembered, reconnecting by itself.
 - **USB:** both drives as mass storage, or the player as a USB DAC.
 - **Everyday controls:** pause, volume and skip with the screen off, a sleep timer, auto off and a charge screen.
